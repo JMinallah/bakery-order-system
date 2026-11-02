@@ -2,6 +2,7 @@ import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -71,6 +72,8 @@ export function SignInPage() {
       return run(async () => {
         const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password)
         await updateProfile(user, { displayName: name.trim() })
+        // A bakery only links someone by a verified email, so ask Firebase to send the check now.
+        await sendEmailVerification(user, { url: `${window.location.origin}/orders` }).catch(() => undefined)
         // The account may already exist on the backend without a name, so save it there too.
         await user.getIdToken(true)
         await send('PATCH', '/users/me', { name: name.trim() }).catch(() => undefined)

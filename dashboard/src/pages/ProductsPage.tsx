@@ -4,7 +4,7 @@ import { PhotoField } from '../components/PhotoField'
 import { useBakery } from '../context/bakery-context'
 import { useToast } from '../context/toast-context'
 import { useAsync } from '../hooks/useAsync'
-import { formatMoney } from '../lib/format'
+import { formatMoney, MAX_AMOUNT } from '../lib/format'
 import { resolveImageUrl } from '../lib/image'
 import { PRODUCT_CATEGORIES, type Product, type ProductCategory } from '../types/api'
 
@@ -75,7 +75,7 @@ export function ProductsPage() {
           )}
           {shown.length > 0 && (
             <div className="table-wrap">
-              <table className="table" style={{ minWidth: 600 }}>
+              <table className="table table-stack" style={{ minWidth: 600 }}>
                 <thead>
                   <tr>
                     <th scope="col">Product</th>
@@ -90,7 +90,7 @@ export function ProductsPage() {
                 <tbody>
                   {shown.map((p) => (
                     <tr key={p.id} className={p.isActive ? undefined : 'row-muted'}>
-                      <td>
+                      <td data-label="Product">
                         <div className="row" style={{ gap: 12, flexWrap: 'nowrap' }}>
                           {p.imageUrl ? (
                             <img src={resolveImageUrl(p.imageUrl)} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }} />
@@ -105,10 +105,10 @@ export function ProductsPage() {
                           </div>
                         </div>
                       </td>
-                      <td>{CATEGORY_LABELS[p.category]}</td>
-                      <td className="right nowrap">{formatMoney(p.price, bakery.currency)}</td>
-                      <td className="muted">{p.category !== 'CAKE' ? 'Not available yet' : p.customisable ? 'Can be customised' : 'Sold as it is'}</td>
-                      <td>
+                      <td data-label="Category">{CATEGORY_LABELS[p.category]}</td>
+                      <td data-label="Price" className="right nowrap">{formatMoney(p.price, bakery.currency)}</td>
+                      <td data-label="Cake builder" className="muted">{p.category !== 'CAKE' ? 'Not available yet' : p.customisable ? 'Can be customised' : 'Sold as it is'}</td>
+                      <td data-label="In app">
                         <label className="switch-label">
                           <input type="checkbox" role="switch" className="switch" checked={p.isActive} onChange={(e) => void setActive(p, e.target.checked)} />
                           {p.isActive ? 'Shown' : 'Hidden'}
@@ -162,6 +162,7 @@ function ProductForm({ product, onDone, onCancel }: { product: Product | null; o
     const lead = Number(form.leadTimeDays)
     if (!form.name.trim()) return setError('Give the product a name')
     if (!Number.isInteger(price) || price < 0) return setError('Enter the price as a whole number')
+    if (price > MAX_AMOUNT) return setError('That price is too large')
     if (!Number.isInteger(lead) || lead < 0) return setError('Days needed must be a whole number')
     const data: Partial<ProductInput> = {
       name: form.name.trim(),

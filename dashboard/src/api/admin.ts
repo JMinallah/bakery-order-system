@@ -1,3 +1,4 @@
+import type { AddMemberResult } from '../types/api'
 import { api, send } from './client'
 
 export type AdminOverview = {
@@ -17,11 +18,15 @@ export type PlatformBakery = {
   phone: string | null
   address: string | null
   isActive: boolean
+  isPublished: boolean
   createdAt: string
+  openOrders: number
+  owners: number
   _count: {
     members: number
     products: number
     orders: number
+    invites: number
   }
 }
 
@@ -49,3 +54,6 @@ export const listPlatformUsers = () => api<PlatformUser[]>('/admin/users')
 
 export const updateUserRole = (userId: string, role: 'ADMIN' | 'CUSTOMER') =>
   send<PlatformUser>('PATCH', `/admin/users/${userId}/role`, { role })
+
+export const assignBakeryOwner = (bakeryId: string, email: string) =>
+  send<AddMemberResult>('POST', `/admin/bakeries/${bakeryId}/owner`, { email })

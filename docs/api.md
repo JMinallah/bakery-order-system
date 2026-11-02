@@ -25,7 +25,8 @@ The first authenticated request creates the user. Everyone is a customer; a user
 | `x-dev-user: amara` | Signs in as the customer `amara` |
 | `x-dev-role: STAFF` | Also makes them an owner of the seeded Sweet Crumbs Bakery |
 | `x-dev-bakery: mamas-oven` | With `STAFF`, joins that bakery instead |
-| `x-dev-role: ADMIN` | Platform admin: acts as staff of every bakery |
+| `x-dev-role: ADMIN` | Platform admin. Admins are never staff of a bakery |
+| `x-dev-email: amara@example.com` | Gives them a verified email, e.g. to accept a staff invite. Add `x-dev-unverified: true` to leave it unverified |
 
 This is disabled when `NODE_ENV=production`.
 
@@ -51,8 +52,11 @@ Custom and BULK:         SUBMITTED → QUOTED → CONFIRMED → PREPARING → RE
 - **Custom and bulk** orders get an `estimate` from the builder prices. Staff send a quote, the order becomes `QUOTED`, and it is only `CONFIRMED` when the **customer accepts** the latest quote. `total` is then the accepted amount.
 - Staff move a confirmed order forward one step at a time.
 - Customers can cancel until the bakery starts making the cake (`PREPARING`). Staff can cancel any open order, and must give a reason.
+- The system cancels (`cancelledBy: "SYSTEM"`) quotes the customer hasn't answered after the bakery's `quoteExpiryDays`, and `SUBMITTED` or `QUOTED` orders whose due time passes. Both notify the customer and the bakery.
+- When two people change the same order at once, the second gets a 409 that describes what happened, e.g. "The order is already preparing".
 - **Capacity:** each custom or bulk order uses one of the bakery's daily slots on its due day. Closed weekdays, blocked dates, days within the notice period and full days are refused with 409. Ready made orders only need the product's `leadTimeDays` and an open day.
-- **Payments** are records only; money never goes through the system. `paymentStatus` is worked out from the payments: `UNPAID`, `DEPOSIT_PAID` or `PAID`.
+- **Payments** are records only; money never goes through the system. They can be recorded from `QUOTED` onwards, so a deposit can hold the date. `paymentStatus` is worked out from the payments: `UNPAID`, `DEPOSIT_PAID` or `PAID`.
+- Money fields (prices, fees, quotes, payments, budgets) are whole numbers up to 1,000,000,000.
 
 ## Endpoints
 
@@ -62,16 +66,31 @@ Custom and BULK:         SUBMITTED → QUOTED → CONFIRMED → PREPARING → RE
 |---|---|---|---|
 | POST | `/bakery-applications` | public | Submit a bakery for review |
 | GET | `/bakery-applications` | platform admin | Review submitted applications |
-| PATCH | `/bakery-applications/:applicationId` | platform admin | Set `PENDING`, `CONTACTED`, `APPROVED` or `DECLINED` |
-| POST | `/bakery-applications/:applicationId/onboard` | platform admin | Create the bakery workspace, approve the application, and add the matching signed-in user as owner when available |
+| PATCH | `/bakery-applications/:applicationId` | platform admin | Set `PENDING`, `CONTACTED` or `DECLINED`. 409 once the bakery exists |
+| POST | `/bakery-applications/:applicationId/onboard` | platform admin | Create the bakery and approve the application. Returns `{ bakery, owner, account }` |
 
-Applications do not create a public bakery immediately. After review, the platform admin uses the onboarding action to create the bakery workspace. If the applicant has already signed in, their matching email is added as an `OWNER`; otherwise the owner must sign in once before being added from Settings.
+One open application per email (409 for a second). Submitting is limited to 5 an hour per connection.
+
+Onboarding creates the bakery **unpublished**, so customers can't see it until its owner publishes it. The applicant's email becomes the owner straight away if they have a verified account, otherwise through an invite (`owner: "INVITED"`) that they claim by signing in with that email verified. `account` is `CREATED` when the backend made them a Firebase account, so the dashboard sends Firebase's set-a-password email; `EXISTING` if they already had one; `UNAVAILABLE` without Firebase. Calling it again returns the same bakery.
+
+The application list adds `bakery` and `owner` (`LINKED`, `INVITED` or `NONE`) to onboarded applications.
+
+### Platform admin
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/admin/overview` | Counts across the platform |
+| GET | `/admin/bakeries` | Every bakery with `isActive`, `isPublished`, `openOrders`, `owners` and counts |
+| PATCH | `/admin/bakeries/:bakeryId/status` | `{ "isActive": false }` suspends: hidden from customers, no new orders |
+| POST | `/admin/bakeries/:bakeryId/owner` | `{ "email": "…" }`. Gives the bakery an owner, now or when they sign in verified |
+| GET | `/admin/users` | Every user |
+| PATCH | `/admin/users/:userId/role` | `{ "role": "ADMIN" }`. Removes their bakery memberships; 409 if they're a bakery's only owner |
 
 ### Bakeries (public)
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/bakeries?area=Ntinda&country=UG&q=` | Active bakeries, soonest available first. `area` keeps bakeries that deliver there |
+| GET | `/bakeries?area=Ntinda&country=UG&q=` | Published, active bakeries, soonest available first. `area` keeps bakeries that deliver there |
 | GET | `/bakeries/:bakeryId` | One bakery. Accepts the id or the slug (`sweet-crumbs`) |
 | GET | `/bakeries/:bakeryId/availability?from=2026-11-01&days=42` | Custom order calendar, at most 92 days |
 | GET | `/bakeries/:bakeryId/products?category=CAKE` | Products customers can order |
@@ -79,6 +98,8 @@ Applications do not create a public bakery immediately. After review, the platfo
 | GET | `/bakeries/:bakeryId/builder?category=CAKE` | Cake builder groups and the options customers can pick right now |
 
 A bakery in the list includes `cakesFrom` (cheapest cake) and `nextCustomDate` (first day a custom cake could be due).
+
+Unpublished or suspended bakeries return 404 to customers. Their own staff still get them from these endpoints, so the dashboard works during setup.
 
 Availability returns one entry per day:
 
@@ -136,18 +157,18 @@ Only `bakeryId`, `type`, `dueDate` and `fulfilment` are always required, so a cu
   "deliveryArea": "Ntinda",
   "deliveryAddress": "Plot 12, Ntinda",
   "optionIds": ["opt_round", "opt_2tiers", "opt_2kg", "opt_vanilla", "opt_pink", "opt_pearls"],
-  "designImageUrl": "https://firebasestorage.googleapis.com/…",
+  "designImageUrl": "https://api.example.com/api/uploads/cm3…",
   "items": [],
-  "inspirationImageUrls": ["https://firebasestorage.googleapis.com/…"]
+  "inspirationImageUrls": ["https://api.example.com/api/uploads/cm3…"]
 }
 ```
 
 - `type`: `STANDARD` (ready made, needs `items`, no `optionIds`), `CUSTOM` or `BULK`.
 - `clientRequestId`: make a new random id (a UUID) for each order the customer places, and **keep it when retrying**. If the phone lost its connection and sends the order again, the API returns the first order instead of saving a second one.
 - `deliveryArea` must be one of the bakery's `deliveryAreas`. `DELIVERY` also needs `deliveryAddress`.
-- `optionIds` come from the builder. Only one option per group unless the group is `multiple`, and required groups need a choice.
+- `optionIds` come from the builder. Only one option per group unless the group is `multiple`, and required groups need a choice (unless none of their options are available, in which case the builder doesn't show the group).
 - `items` with a customisable product on a `CUSTOM` order means "based on this cake".
-- `designImageUrl` is a picture of the builder preview. Upload photos with `POST /uploads` first and send their URLs, at most 5 inspiration photos per order.
+- `designImageUrl` is a picture of the builder preview. Upload photos with `POST /uploads` first and send the URLs it returns, at most 5 inspiration photos per order. Any other link is refused with 400; only the `/uploads/<id>` part is checked, so the host may differ.
 
 ### Photos
 
@@ -167,9 +188,9 @@ Put the returned `url` in `inspirationImageUrls` or `designImageUrl` on an order
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/users/me` | Current user, plus `bakeries: [{ id, slug, name, memberRole }]` for staff |
+| GET | `/users/me` | Current user with `emailVerified`, plus `bakeries: [{ id, slug, name, memberRole }]` for staff. Turns pending invites for a verified email into memberships first |
 | PATCH | `/users/me` | `{ "name": "…", "phone": "…" }` |
-| POST | `/users/me/fcm-tokens` | Register a device or browser for push notifications: `{ "token": "…" }` |
+| POST | `/users/me/fcm-tokens` | Register a device or browser for push notifications: `{ "token": "…" }`. The newest 10 are kept |
 
 ### Bakery staff (dashboard)
 
@@ -179,16 +200,20 @@ All need a signed in member of the bakery. **Owner** means `OWNER` only.
 |---|---|---|
 | GET | `/bakeries/:bakeryId/orders?status=&from=&to=&q=` | The bakery's orders, soonest due first. `q` searches customer name, phone or `BK1043` |
 | GET | `/bakeries/:bakeryId/orders/summary` | `{ counts: { SUBMITTED: 2, … }, needsAttention: 2 }`: open orders due within 48 hours and untouched for a day |
-| GET | `/bakeries/:bakeryId/settings` | All settings, including capacity rules |
-| PATCH | `/bakeries/:bakeryId` | Owner. Profile, `deliveryAreas`, `deliveryFee`, `pickupAvailable`, payment methods, `customCakesPerDay`, `customNoticeDays`, `closedWeekdays` (1 is Monday, 7 is Sunday) |
+| GET | `/bakeries/:bakeryId/settings` | All settings, including capacity rules, `isPublished`, `isActive` and `publishProblems` (what's missing before it can go live) |
+| PATCH | `/bakeries/:bakeryId` | Owner. Profile, `deliveryAreas`, `deliveryFee`, `pickupAvailable`, payment methods, `customCakesPerDay`, `customNoticeDays`, `closedWeekdays` (1 is Monday, 7 is Sunday), `quoteExpiryDays` (1 to 30) |
+| POST | `/bakeries/:bakeryId/publish` | Owner. Shows the bakery to customers; 409 listing `publishProblems` if setup isn't done |
+| POST | `/bakeries/:bakeryId/unpublish` | Owner. Hides it again; open orders carry on |
 | GET | `/bakeries/:bakeryId/products?all=true` | Includes hidden products |
 | POST | `/bakeries/:bakeryId/products` | `{ name, category, price, description?, sizeLabel?, serves?, leadTimeDays?, customisable?, imageUrl? }` |
 | PATCH | `/bakeries/:bakeryId/products/:productId` | Any of those fields, or `{ "isActive": false }` to hide |
 | GET | `/bakeries/:bakeryId/option-groups` | Every builder option, with `available`, `hiddenBecause` and its stock |
 | POST | `/bakeries/:bakeryId/option-groups` | `{ kind, name, multiple?, required?, position? }` |
 | PATCH | `/bakeries/:bakeryId/option-groups/:groupId` | Any of those fields |
+| DELETE | `/bakeries/:bakeryId/option-groups/:groupId` | Deletes the group and its options. Past orders keep their copies |
 | POST | `/bakeries/:bakeryId/option-groups/:groupId/options` | `{ name, price?, value?, serves?, stockItemId?, isActive?, position? }` |
 | PATCH | `/bakeries/:bakeryId/options/:optionId` | Any of those fields |
+| DELETE | `/bakeries/:bakeryId/options/:optionId` | Past orders keep their copy of the choice |
 | GET | `/bakeries/:bakeryId/stock` | Stock items with `level`: `OK`, `LOW` or `OUT`, and the options linked to each |
 | POST | `/bakeries/:bakeryId/stock` | `{ name, unit, quantity?, lowAt? }` |
 | PATCH | `/bakeries/:bakeryId/stock/:itemId` | For example `{ "quantity": 12 }` after restocking |
@@ -197,8 +222,11 @@ All need a signed in member of the bakery. **Owner** means `OWNER` only.
 | POST | `/bakeries/:bakeryId/blocked-dates` | `{ "date": "2026-10-28", "reason": "Staff training" }` |
 | DELETE | `/bakeries/:bakeryId/blocked-dates/:blockedDateId` | Open the day again |
 | GET | `/bakeries/:bakeryId/members` | Staff list |
-| POST | `/bakeries/:bakeryId/members` | Owner. `{ "email": "…", "role": "STAFF" }`. The person must have signed in once |
+| POST | `/bakeries/:bakeryId/members` | Owner. `{ "email": "…", "role": "STAFF" }`. Returns `{ status: "ADDED", member }` for a verified account, otherwise `{ status: "INVITED", invite }` |
+| PATCH | `/bakeries/:bakeryId/members/:memberId` | Owner. `{ "role": "OWNER" }`. The last owner can't step down |
 | DELETE | `/bakeries/:bakeryId/members/:memberId` | Owner. The last owner can't be removed |
+| GET | `/bakeries/:bakeryId/invites` | People invited who haven't joined yet |
+| DELETE | `/bakeries/:bakeryId/invites/:inviteId` | Owner. Cancel an invite |
 
 ### Health
 

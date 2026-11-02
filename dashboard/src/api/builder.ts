@@ -16,3 +16,8 @@ export const createOption = (bakeryId: string, groupId: string, data: OptionInpu
 
 export const updateOption = (bakeryId: string, optionId: string, data: OptionInput) =>
   send<BuilderOption>('PATCH', `/bakeries/${bakeryId}/options/${optionId}`, data)
+
+export const deleteOptionGroup = (bakeryId: string, groupId: string) =>
+  send<null>('DELETE', `/bakeries/${bakeryId}/option-groups/${groupId}`)
+
+export const deleteOption = (bakeryId: string, optionId: string) => send<null>('DELETE', `/bakeries/${bakeryId}/options/${optionId}`)

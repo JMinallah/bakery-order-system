@@ -17,6 +17,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = ['CAKE', 'CUPCAKE', 'BREAD'
 export interface Me {
   id: string
   email: string | null
+  emailVerified: boolean
   name: string | null
   phone: string | null
   role: 'CUSTOMER' | 'ADMIN'
@@ -47,6 +48,13 @@ export interface BakerySettings {
   closedWeekdays: number[]
   handoverTimes: string[]
   occasions: string[]
+  quoteExpiryDays: number
+  // Hidden from customers until the owner publishes it.
+  isPublished: boolean
+  // False while a platform admin has suspended the bakery.
+  isActive: boolean
+  // What still stops the bakery being published. Empty when it's ready.
+  publishProblems: string[]
 }
 
 export interface Member {
@@ -55,6 +63,17 @@ export interface Member {
   createdAt: string
   user: { id: string; name: string | null; email: string | null }
 }
+
+// Someone asked to join who hasn't signed in with that email verified yet.
+export interface Invite {
+  id: string
+  email: string
+  role: MemberRole
+  createdAt: string
+}
+
+// POST /bakeries/:id/members
+export type AddMemberResult = { status: 'ADDED'; member: Member } | { status: 'INVITED'; invite: Invite }
 
 export interface BlockedDate {
   id: string
@@ -189,7 +208,7 @@ export interface OrderBase {
   deliveryFee: number
   paymentStatus: PaymentStatus
   amountPaid: number
-  cancelledBy: 'CUSTOMER' | 'BAKERY' | null
+  cancelledBy: 'CUSTOMER' | 'BAKERY' | 'SYSTEM' | null
   cancelReason: string | null
   createdAt: string
   updatedAt: string

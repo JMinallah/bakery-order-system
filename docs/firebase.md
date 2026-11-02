@@ -21,6 +21,17 @@ Do this once, with a Google account the team can keep using after the course (no
 
 Don't enable **Phone**: text messages cost money.
 
+5. Add the production dashboard's domain under **Authorized domains** too. The emails below link back to it, and Firebase refuses links to domains that aren't listed.
+
+### The emails Firebase sends
+
+The dashboard uses Firebase's own emails, so no email service is needed:
+
+- **Email address verification**, sent when someone creates a dashboard account. Bakeries only add staff and owners by a verified email.
+- **Password reset**, also sent when an admin approves a bakery application. The backend creates the applicant's account, and this email lets them choose a password.
+
+Under **Authentication → Templates** you can reword them. Worth doing for **Password reset**, since new owners get it as their welcome: for example a subject like "Set up your bakery account" and a line saying their application was approved.
+
 ## 3. Add the dashboard (web app)
 
 1. **Project settings** (the gear next to Project Overview) → **Your apps** → the **Web** icon (`</>`).

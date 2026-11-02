@@ -9,8 +9,8 @@ import { useBakery } from '../context/bakery-context'
 import { useToast } from '../context/toast-context'
 import { useAsync } from '../hooks/useAsync'
 import { addDays, dayKey, formatDayKey, formatTime, isoWeekday, mondayOf } from '../lib/format'
-import { needsQuote, orderTitle } from '../lib/order-flow'
-import type { CalendarDay } from '../types/api'
+import { isOpen, needsQuote, orderTitle } from '../lib/order-flow'
+import type { CalendarDay, OrderSummary } from '../types/api'
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -187,10 +187,8 @@ export function SchedulePage() {
           toast(`${formatDayKey(selected)} is blocked. Customers can't pick it.`)
         }}
       >
-        <p>
-          Customers won't be able to choose this day for new orders.
-          {dayOrders.data?.length ? ` The ${dayOrders.data.length} ${dayOrders.data.length === 1 ? 'order' : 'orders'} already due that day stay booked.` : ''}
-        </p>
+        <p>Customers won't be able to choose this day for new orders.</p>
+        <AffectedOrders orders={(dayOrders.data ?? []).filter((o) => isOpen(o.status))} />
         <div className="field">
           <label htmlFor="block-reason">
             Reason <span className="optional">· only staff see it</span>
@@ -209,16 +207,31 @@ function LimitsForm({ editable, today, onSaved }: { editable: boolean; today: st
   const [closed, setClosed] = useState<number[]>(bakery.closedWeekdays)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Open orders due on a weekday that is about to close, shown before saving.
+  const [affected, setAffected] = useState<OrderSummary[] | null>(null)
 
   const dirty = perDay !== bakery.customCakesPerDay || notice !== bakery.customNoticeDays || closed.join() !== bakery.closedWeekdays.join()
   const toggle = (day: number) => setClosed((list) => (list.includes(day) ? list.filter((d) => d !== day) : [...list, day].sort()))
+
+  const saveLimits = async () => {
+    await updateSettings(bakery.id, { customCakesPerDay: perDay, customNoticeDays: notice, closedWeekdays: closed })
+    onSaved()
+  }
 
   const save = async () => {
     setSaving(true)
     setError(null)
     try {
-      await updateSettings(bakery.id, { customCakesPerDay: perDay, customNoticeDays: notice, closedWeekdays: closed })
-      onSaved()
+      const closing = closed.filter((d) => !bakery.closedWeekdays.includes(d))
+      if (closing.length) {
+        const upcoming = await listBakeryOrders(bakery.id, { from: today })
+        const hit = upcoming.filter((o) => isOpen(o.status) && closing.includes(isoWeekday(dayKey(new Date(o.dueDate), bakery.timezone))))
+        if (hit.length) {
+          setAffected(hit)
+          return
+        }
+      }
+      await saveLimits()
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -286,6 +299,45 @@ function LimitsForm({ editable, today, onSaved }: { editable: boolean; today: st
           <span className="hint">New limits apply to new orders. Orders you already accepted stay booked.</span>
         </div>
       )}
+
+      <ConfirmDialog
+        open={affected !== null}
+        title="Close on those days anyway?"
+        confirmLabel="Save limits"
+        onClose={() => setAffected(null)}
+        onConfirm={saveLimits}
+      >
+        <p>Customers won't be able to pick these weekdays for new orders.</p>
+        <AffectedOrders orders={affected ?? []} withDay />
+      </ConfirmDialog>
+    </div>
+  )
+}
+
+// Orders already booked on a day the bakery is about to close.
+function AffectedOrders({ orders, withDay }: { orders: OrderSummary[]; withDay?: boolean }) {
+  const { bakery } = useBakery()
+  if (!orders.length) return null
+  return (
+    <div className="stack">
+      <p className="strong">
+        {orders.length === 1 ? 'This order is' : `These ${orders.length} orders are`} already due then and stay booked. Contact the{' '}
+        {orders.length === 1 ? 'customer' : 'customers'} if you can't make {orders.length === 1 ? 'it' : 'them'}:
+      </p>
+      <ul className="list">
+        {orders.map((o) => (
+          <li key={o.id} className="row-between">
+            <Link to={`/orders/${o.id}`}>
+              {orderTitle(o)} for {o.customer.name ?? 'a customer'}
+            </Link>
+            <span className="muted small">
+              {withDay ? `${formatDayKey(dayKey(new Date(o.dueDate), bakery.timezone))}, ` : ''}
+              {formatTime(o.dueDate, bakery.timezone)}
+              {o.customer.phone ? ` · ${o.customer.phone}` : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
