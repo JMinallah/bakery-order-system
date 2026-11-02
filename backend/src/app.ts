@@ -26,6 +26,16 @@ export function createApp() {
     legacyHeaders: false,
     skip: () => env.NODE_ENV === "test",
   });
+  // The application form needs no account, so it gets a much tighter limit against spam.
+  const applicationLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 5,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    // Only the public form itself; admins approving applications are signed in and not limited here.
+    skip: (req) => env.NODE_ENV === "test" || req.method !== "POST" || req.path !== "/",
+    message: { error: "Too many applications from this connection. Please try again in an hour" },
+  });
 
   app.use(helmet());
   app.use(cors({ origin: env.CORS_ORIGINS.split(",").map((o) => o.trim()) }));
@@ -39,7 +49,7 @@ export function createApp() {
 
   app.use("/api/users", usersRouter);
   app.use("/api/admin", adminRouter);
-  app.use("/api/bakery-applications", bakeryApplicationsRouter);
+  app.use("/api/bakery-applications", applicationLimiter, bakeryApplicationsRouter);
   app.use("/api/orders", ordersRouter);
   app.use("/api/uploads", uploadsRouter);
   app.use("/api/ai", aiRouter);

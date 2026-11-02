@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Amount, ImageUrl } from "../../lib/validation.js";
 
 // Keep in sync with the ProductCategory enum in prisma/schema.prisma.
 export const PRODUCT_CATEGORIES = ["CAKE", "CUPCAKE", "BREAD", "PASTRY", "COOKIE", "EXTRA"] as const;
@@ -8,8 +9,8 @@ const ProductFields = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().max(1000).nullable(),
   category: z.enum(PRODUCT_CATEGORIES),
-  price: z.number().int().nonnegative(),
-  imageUrl: z.string().url().nullable(),
+  price: Amount,
+  imageUrl: ImageUrl.nullable(),
   sizeLabel: z.string().max(40).nullable(),
   serves: z.number().int().positive().nullable(),
   leadTimeDays: z.number().int().min(0).max(60),

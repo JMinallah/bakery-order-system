@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireMember } from "../../lib/access.js";
-import { requireAuth } from "../../middleware/auth.js";
-import { findActiveBakery } from "../bakeries/bakeries.service.js";
+import { optionalAuth, requireAuth } from "../../middleware/auth.js";
+import { findVisibleBakery } from "../bakeries/bakeries.service.js";
 import { BuilderQuery, OptionGroupInput, OptionGroupUpdate, OptionInput, OptionUpdate } from "./builder.schemas.js";
 import * as builder from "./builder.service.js";
 
@@ -9,9 +9,9 @@ import * as builder from "./builder.service.js";
 export const builderRouter = Router();
 
 // Public: what the app's cake builder offers.
-builderRouter.get("/:bakeryId/builder", async (req, res) => {
+builderRouter.get("/:bakeryId/builder", optionalAuth, async (req, res) => {
   const { category } = BuilderQuery.parse(req.query);
-  const bakery = await findActiveBakery(req.params.bakeryId);
+  const bakery = await findVisibleBakery(req.params.bakeryId, req.user);
   res.json(await builder.customerBuilder(bakery.id, category));
 });
 
@@ -35,4 +35,14 @@ builderRouter.post("/:bakeryId/option-groups/:groupId/options", requireAuth, req
 
 builderRouter.patch("/:bakeryId/options/:optionId", requireAuth, requireMember(), async (req, res) => {
   res.json(await builder.updateOption(req.params.bakeryId, req.params.optionId, OptionUpdate.parse(req.body)));
+});
+
+builderRouter.delete("/:bakeryId/option-groups/:groupId", requireAuth, requireMember(), async (req, res) => {
+  await builder.deleteGroup(req.params.bakeryId, req.params.groupId);
+  res.status(204).end();
+});
+
+builderRouter.delete("/:bakeryId/options/:optionId", requireAuth, requireMember(), async (req, res) => {
+  await builder.deleteOption(req.params.bakeryId, req.params.optionId);
+  res.status(204).end();
 });

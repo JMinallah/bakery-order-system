@@ -49,7 +49,8 @@ export function resolveSelections(groups: BuilderGroup[], optionIds: string[]) {
   for (const group of groups) {
     const count = chosen.get(group.id)?.length ?? 0;
     if (!group.multiple && count > 1) throw badRequest(`Pick only one option for ${group.name}`);
-    if (group.required && count === 0) throw badRequest(`Pick an option for ${group.name}`);
+    // Customers never see a group whose options are all switched off or sold out, so it can't be required.
+    if (group.required && count === 0 && group.options.some(isAvailable)) throw badRequest(`Pick an option for ${group.name}`);
   }
 
   const selections = [...chosen.values()].flat();

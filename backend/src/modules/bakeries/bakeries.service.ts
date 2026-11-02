@@ -1,6 +1,7 @@
+import { isMember } from "../../lib/access.js";
 import { dateFromKey } from "../../lib/dates.js";
-import { badRequest, conflict, HttpError, notFound } from "../../lib/http-error.js";
-import { prisma, Prisma, type Bakery } from "../../lib/prisma.js";
+import { badRequest, conflict, notFound } from "../../lib/http-error.js";
+import { prisma, Prisma, type Bakery, type MemberRole, type User } from "../../lib/prisma.js";
 import { nextCustomDate, todayFor } from "./availability.service.js";
 import type { BakerySettingsUpdate } from "./bakeries.schemas.js";
 
@@ -47,7 +48,7 @@ function toPublic(bakery: Bakery, priceFrom: number | null | undefined, next: st
 export async function listBakeries(filters: { area?: string; country?: string; q?: string }) {
   const bakeries = await prisma.bakery.findMany({
     where: {
-      isActive: true,
+      ...customerVisible,
       country: filters.country,
       name: filters.q ? { contains: filters.q, mode: "insensitive" } : undefined,
     },
@@ -66,15 +67,27 @@ export async function listBakeries(filters: { area?: string; country?: string; q
     .sort((a, b) => (a.nextCustomDate ?? "9999").localeCompare(b.nextCustomDate ?? "9999"));
 }
 
-// Accepts the bakery's id or its slug.
+// Customers only see bakeries the owner has published and the platform hasn't suspended.
+const customerVisible = { isActive: true, isPublished: true } as const;
+
+// A bakery customers can order from. Accepts the bakery's id or its slug.
 export async function findActiveBakery(idOrSlug: string) {
-  const bakery = await prisma.bakery.findFirst({ where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }], isActive: true } });
+  const bakery = await prisma.bakery.findFirst({ where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }], ...customerVisible } });
   if (!bakery) throw notFound("Bakery");
   return bakery;
 }
 
-export async function getPublicBakery(idOrSlug: string) {
-  const bakery = await findActiveBakery(idOrSlug);
+// Like findActiveBakery, but the bakery's own staff also see it while it is unpublished or
+// suspended, so the dashboard keeps working during setup.
+export async function findVisibleBakery(idOrSlug: string, user: User | undefined) {
+  const bakery = await prisma.bakery.findFirst({ where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] } });
+  if (!bakery) throw notFound("Bakery");
+  if ((bakery.isActive && bakery.isPublished) || (await isMember(user, bakery.id))) return bakery;
+  throw notFound("Bakery");
+}
+
+export async function getPublicBakery(idOrSlug: string, user: User | undefined) {
+  const bakery = await findVisibleBakery(idOrSlug, user);
   const [prices, next] = await Promise.all([cakePricesFrom([bakery.id]), nextCustomDate(bakery)]);
   return toPublic(bakery, prices.get(bakery.id), next);
 }
@@ -83,6 +96,37 @@ export async function getStaffBakery(bakeryId: string) {
   const bakery = await prisma.bakery.findUnique({ where: { id: bakeryId } });
   if (!bakery) throw notFound("Bakery");
   return bakery;
+}
+
+// What still stops the bakery going live. Empty when it can be published.
+export async function publishProblems(bakery: Bakery) {
+  const [products, options] = await Promise.all([
+    prisma.product.count({ where: { bakeryId: bakery.id, isActive: true } }),
+    prisma.option.count({ where: { group: { bakeryId: bakery.id }, isActive: true } }),
+  ]);
+  const problems: string[] = [];
+  if (products + options === 0) problems.push("Add at least one product or cake builder option");
+  if (!bakery.phone) problems.push("Add a phone number customers can call");
+  if (!bakery.pickupAvailable && bakery.deliveryAreas.length === 0) problems.push("Offer pickup or at least one delivery area");
+  if (bakery.handoverTimes.length === 0) problems.push("Add at least one handover time");
+  if (bakery.acceptsMobileMoney && !bakery.mobileMoneyNumber) problems.push("Add the Mobile Money number customers pay to");
+  return problems;
+}
+
+// The settings screen: every field, plus what is left before the bakery can go live.
+export async function staffSettings(bakeryId: string) {
+  const bakery = await getStaffBakery(bakeryId);
+  return { ...bakery, publishProblems: await publishProblems(bakery) };
+}
+
+export async function setPublished(bakeryId: string, isPublished: boolean) {
+  const bakery = await getStaffBakery(bakeryId);
+  if (isPublished) {
+    const problems = await publishProblems(bakery);
+    if (problems.length) throw conflict(`Before going live: ${problems.join(", ").toLowerCase()}`);
+  }
+  await prisma.bakery.update({ where: { id: bakeryId }, data: { isPublished } });
+  return staffSettings(bakeryId);
 }
 
 export async function updateSettings(bakeryId: string, data: BakerySettingsUpdate) {
@@ -102,7 +146,8 @@ export async function updateSettings(bakeryId: string, data: BakerySettingsUpdat
   if (data.occasions) {
     data.occasions = [...new Set(data.occasions.map((o) => o.trim()).filter(Boolean))];
   }
-  return prisma.bakery.update({ where: { id: bakeryId }, data });
+  await prisma.bakery.update({ where: { id: bakeryId }, data });
+  return staffSettings(bakeryId);
 }
 
 // ---------------------------------------------------------------------------
@@ -120,29 +165,97 @@ export function listMembers(bakeryId: string) {
   return prisma.bakeryMember.findMany({ where: { bakeryId }, select: memberSelect, orderBy: { createdAt: "asc" } });
 }
 
-export async function addMember(bakeryId: string, email: string, role: "OWNER" | "STAFF") {
-  const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
-  if (!user) throw new HttpError(404, "No account uses that email. Ask them to sign in to the app once, then try again");
-  if (user.role === "ADMIN") {
-    throw badRequest("Platform administrators cannot be attached to a bakery. Admins are strictly independent.");
+const inviteSelect = { id: true, email: true, role: true, createdAt: true } as const;
+
+// Someone with a verified account joins straight away. Anyone else gets an invite that
+// turns into membership when they open the dashboard with that email verified.
+export async function addMember(bakeryId: string, email: string, role: MemberRole) {
+  const address = email.trim().toLowerCase();
+  const accounts = await prisma.user.findMany({ where: { email: { equals: address, mode: "insensitive" } } });
+  if (accounts.some((u) => u.role === "ADMIN")) {
+    throw badRequest("Platform administrators can't join a bakery. Use a different email");
   }
-  try {
-    return await prisma.bakeryMember.create({ data: { bakeryId, userId: user.id, role }, select: memberSelect });
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw conflict("That person is already on your staff");
+  const verified = accounts.find((u) => u.emailVerified);
+  if (verified) {
+    try {
+      const member = await prisma.bakeryMember.create({ data: { bakeryId, userId: verified.id, role }, select: memberSelect });
+      return { status: "ADDED" as const, member };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw conflict("That person is already on your staff");
+      }
+      throw err;
     }
-    throw err;
   }
+  const invite = await prisma.bakeryInvite.upsert({
+    where: { bakeryId_email: { bakeryId, email: address } },
+    update: { role },
+    create: { bakeryId, email: address, role },
+    select: inviteSelect,
+  });
+  return { status: "INVITED" as const, invite };
+}
+
+// Platform admins use this to give a bakery an owner again, e.g. when the only owner left.
+export async function assignOwner(bakeryId: string, email: string) {
+  await getStaffBakery(bakeryId);
+  const verified = await prisma.user.findFirst({
+    where: { email: { equals: email.trim(), mode: "insensitive" }, emailVerified: true },
+    select: { id: true, role: true },
+  });
+  if (verified && verified.role !== "ADMIN") {
+    const existing = await prisma.bakeryMember.findUnique({ where: { bakeryId_userId: { bakeryId, userId: verified.id } } });
+    if (existing) {
+      const member = await prisma.bakeryMember.update({ where: { id: existing.id }, data: { role: "OWNER" }, select: memberSelect });
+      return { status: "ADDED" as const, member };
+    }
+  }
+  return addMember(bakeryId, email, "OWNER");
+}
+
+export function listInvites(bakeryId: string) {
+  return prisma.bakeryInvite.findMany({ where: { bakeryId }, select: inviteSelect, orderBy: { createdAt: "asc" } });
+}
+
+export async function cancelInvite(bakeryId: string, inviteId: string) {
+  const invite = await prisma.bakeryInvite.findFirst({ where: { id: inviteId, bakeryId } });
+  if (!invite) throw notFound("Invite");
+  await prisma.bakeryInvite.delete({ where: { id: invite.id } });
+}
+
+// Turns invites for this person's verified email into memberships.
+export async function claimInvites(user: User) {
+  if (!user.email || !user.emailVerified || user.role === "ADMIN") return;
+  const invites = await prisma.bakeryInvite.findMany({ where: { email: user.email.toLowerCase() } });
+  for (const invite of invites) {
+    await prisma.$transaction([
+      prisma.bakeryMember.upsert({
+        where: { bakeryId_userId: { bakeryId: invite.bakeryId, userId: user.id } },
+        update: invite.role === "OWNER" ? { role: "OWNER" } : {},
+        create: { bakeryId: invite.bakeryId, userId: user.id, role: invite.role },
+      }),
+      prisma.bakeryInvite.delete({ where: { id: invite.id } }),
+    ]);
+  }
+}
+
+async function assertOtherOwner(bakeryId: string) {
+  const owners = await prisma.bakeryMember.count({ where: { bakeryId, role: "OWNER" } });
+  if (owners <= 1) throw conflict("A bakery needs at least one owner. Make someone else an owner first");
+}
+
+export async function changeMemberRole(bakeryId: string, memberId: string, role: MemberRole) {
+  const member = await prisma.bakeryMember.findFirst({ where: { id: memberId, bakeryId } });
+  if (!member) throw notFound("Staff member");
+  if (member.role === role) return prisma.bakeryMember.findUniqueOrThrow({ where: { id: member.id }, select: memberSelect });
+  if (member.role === "OWNER") await assertOtherOwner(bakeryId);
+  return prisma.bakeryMember.update({ where: { id: member.id }, data: { role }, select: memberSelect });
 }
 
 export async function removeMember(bakeryId: string, memberId: string) {
   const member = await prisma.bakeryMember.findFirst({ where: { id: memberId, bakeryId } });
   if (!member) throw notFound("Staff member");
-  if (member.role === "OWNER") {
-    const owners = await prisma.bakeryMember.count({ where: { bakeryId, role: "OWNER" } });
-    if (owners <= 1) throw conflict("A bakery needs at least one owner. Make someone else an owner first");
-  }
+  if (member.role === "OWNER") await assertOtherOwner(bakeryId);
   await prisma.bakeryMember.delete({ where: { id: member.id } });
 }
 

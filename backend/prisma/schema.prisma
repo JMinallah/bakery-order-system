@@ -86,6 +86,8 @@ enum PaymentMethod {
 enum CancelledBy {
   CUSTOMER
   BAKERY
+  // Closed automatically: the quote expired or the due date passed unconfirmed.
+  SYSTEM
 }
 
 enum BakeryApplicationStatus {
@@ -101,6 +103,8 @@ model User {
   email       String?
   name        String?
   phone       String?
+  // From the Firebase token. Staff and owners are only ever linked by a verified email.
+  emailVerified Boolean @default(false)
   role        Role     @default(CUSTOMER)
   // Firebase Cloud Messaging device/browser tokens for push notifications.
   fcmTokens   String[]
@@ -146,11 +150,17 @@ model Bakery {
   handoverTimes      String[] @default(["10:00", "14:00", "17:00"])
   // Celebration occasions the bakery caters to for custom orders.
   occasions          String[] @default(["Birthday", "Wedding", "Introduction", "Graduation", "Baby shower", "Other"])
+  // An unanswered quote is cancelled after this many days, so it stops holding a day's slot.
+  quoteExpiryDays    Int      @default(7)
+  // Set by the owner once the bakery is ready for customers.
+  isPublished        Boolean  @default(false)
+  // Set by a platform admin. A suspended bakery takes no new orders.
   isActive           Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   members      BakeryMember[]
+  invites      BakeryInvite[]
   products     Product[]
   optionGroups OptionGroup[]
   stockItems   StockItem[]
@@ -189,6 +199,22 @@ model BakeryMember {
 
   @@unique([bakeryId, userId])
   @@index([userId])
+}
+
+// Someone asked to join a bakery before they had a verified account. They become a
+// member the first time they open the dashboard with that email verified.
+model BakeryInvite {
+  id        String     @id @default(cuid())
+  bakeryId  String
+  // Stored in lower case.
+  email     String
+  role      MemberRole @default(STAFF)
+  createdAt DateTime   @default(now())
+
+  bakery Bakery @relation(fields: [bakeryId], references: [id], onDelete: Cascade)
+
+  @@unique([bakeryId, email])
+  @@index([email])
 }
 
 // A day the bakery takes no orders, on top of its closed weekdays.

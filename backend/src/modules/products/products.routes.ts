@@ -3,7 +3,7 @@ import { isMember, requireMember } from "../../lib/access.js";
 import { forbidden, notFound } from "../../lib/http-error.js";
 import { prisma } from "../../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../../middleware/auth.js";
-import { findActiveBakery } from "../bakeries/bakeries.service.js";
+import { findVisibleBakery } from "../bakeries/bakeries.service.js";
 import { ProductInput, ProductsQuery, ProductUpdate } from "./products.schemas.js";
 
 // Mounted at /api/bakeries.
@@ -13,7 +13,7 @@ export const productsRouter = Router();
 productsRouter.get("/:bakeryId/products", optionalAuth, async (req, res) => {
   const { category, all } = ProductsQuery.parse(req.query);
   const includeHidden = all === "true";
-  const bakery = await findActiveBakery(req.params.bakeryId);
+  const bakery = await findVisibleBakery(req.params.bakeryId, req.user);
   if (includeHidden && !(await isMember(req.user, bakery.id))) throw forbidden();
   res.json(
     await prisma.product.findMany({
@@ -23,8 +23,8 @@ productsRouter.get("/:bakeryId/products", optionalAuth, async (req, res) => {
   );
 });
 
-productsRouter.get("/:bakeryId/products/:productId", async (req, res) => {
-  const bakery = await findActiveBakery(req.params.bakeryId);
+productsRouter.get("/:bakeryId/products/:productId", optionalAuth, async (req, res) => {
+  const bakery = await findVisibleBakery(req.params.bakeryId, req.user);
   const product = await prisma.product.findFirst({
     where: { id: req.params.productId, bakeryId: bakery.id, isActive: true },
   });

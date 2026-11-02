@@ -89,3 +89,15 @@ export async function updateOption(bakeryId: string, optionId: string, data: z.i
   await assertStockItem(bakeryId, data.stockItemId);
   return prisma.option.update({ where: { id: optionId }, data });
 }
+
+// Past orders keep their own copy of each choice's name and price, so deleting is safe.
+export async function deleteGroup(bakeryId: string, groupId: string) {
+  await findGroup(bakeryId, groupId);
+  await prisma.optionGroup.delete({ where: { id: groupId } });
+}
+
+export async function deleteOption(bakeryId: string, optionId: string) {
+  const option = await prisma.option.findFirst({ where: { id: optionId, group: { bakeryId } } });
+  if (!option) throw notFound("Option");
+  await prisma.option.delete({ where: { id: optionId } });
+}

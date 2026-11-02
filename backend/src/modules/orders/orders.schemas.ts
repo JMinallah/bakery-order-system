@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isDayKey } from "../../lib/dates.js";
+import { Amount, PositiveAmount, UploadUrl } from "../../lib/validation.js";
 
 // Keep these lists in sync with the enums in prisma/schema.prisma.
 export const ORDER_STATUSES = ["SUBMITTED", "QUOTED", "CONFIRMED", "PREPARING", "READY", "COMPLETED", "CANCELLED"] as const;
@@ -25,7 +26,7 @@ export const CreateOrderInput = z.object({
   theme: z.string().trim().max(200).optional(),
   inscription: z.string().trim().max(200).optional(),
   notes: z.string().trim().max(2000).optional(),
-  budget: z.number().int().nonnegative().optional(),
+  budget: Amount.optional(),
   dueDate: z.coerce.date(),
   fulfilment: z.enum(["PICKUP", "DELIVERY"]),
   deliveryArea: z.string().trim().max(80).optional(),
@@ -33,8 +34,9 @@ export const CreateOrderInput = z.object({
   items: z.array(OrderItemInput).max(50).default([]),
   // Builder choices, from GET /bakeries/:bakeryId/builder.
   optionIds: z.array(z.string().min(1)).max(50).default([]),
-  designImageUrl: z.string().url().optional(),
-  inspirationImageUrls: z.array(z.string().url()).max(5).default([]),
+  // Links from POST /uploads.
+  designImageUrl: UploadUrl.optional(),
+  inspirationImageUrls: z.array(UploadUrl).max(5).default([]),
 });
 export type CreateOrderInput = z.infer<typeof CreateOrderInput>;
 
@@ -43,7 +45,7 @@ export const UpdateStatusInput = z.object({
 });
 
 export const CreateQuotationInput = z.object({
-  amount: z.number().int().positive(),
+  amount: PositiveAmount,
   note: z.string().trim().max(1000).optional(),
 });
 
@@ -57,7 +59,7 @@ export const CancelInput = z.object({
 });
 
 export const PaymentInput = z.object({
-  amount: z.number().int().positive(),
+  amount: PositiveAmount,
   method: z.enum(PAYMENT_METHODS),
   note: z.string().trim().max(300).optional(),
 });
