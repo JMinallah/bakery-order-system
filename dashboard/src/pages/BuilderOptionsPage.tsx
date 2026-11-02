@@ -1,11 +1,21 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { createOption, createOptionGroup, listOptionGroups, updateOption, updateOptionGroup, type OptionInput } from '../api/builder'
+import {
+  createOption,
+  createOptionGroup,
+  deleteOption,
+  deleteOptionGroup,
+  listOptionGroups,
+  updateOption,
+  updateOptionGroup,
+  type OptionInput,
+} from '../api/builder'
 import { listStock } from '../api/stock'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { useBakery } from '../context/bakery-context'
 import { useToast } from '../context/toast-context'
 import { useAsync } from '../hooks/useAsync'
-import { formatMoney } from '../lib/format'
+import { formatMoney, MAX_AMOUNT } from '../lib/format'
 import type { BuilderOption, OptionGroup, OptionKind, StockItem } from '../types/api'
 
 const KIND_LABELS: Record<OptionKind, string> = {
@@ -25,6 +35,8 @@ export function BuilderOptionsPage() {
   const stock = useAsync(() => listStock(bakery.id), [bakery.id])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editing, setEditing] = useState<BuilderOption | null>(null)
+  const [deletingGroup, setDeletingGroup] = useState<OptionGroup | null>(null)
+  const [deletingOption, setDeletingOption] = useState<BuilderOption | null>(null)
 
   const list = groups.data ?? []
   const group = list.find((g) => g.id === selectedId) ?? list[0]
@@ -120,16 +132,29 @@ export function BuilderOptionsPage() {
                 <span>Customers must choose one before they can continue</span>
               </label>
 
+              {group.options.length > 0 && !group.options.some((o) => o.available) && (
+                <p className="alert" role="status">
+                  <span>
+                    <strong>Customers can't see {group.name} right now.</strong> None of its options are switched on and in stock, so the app leaves the
+                    group out{group.required ? ' and lets customers continue without it' : ''}. Switch an option on
+                    {group.options.some((o) => o.hiddenBecause === 'OUT_OF_STOCK') ? ' or restock it' : ''} to bring it back.
+                  </span>
+                  {group.options.some((o) => o.hiddenBecause === 'OUT_OF_STOCK') && <Link to="/stock">Go to stock</Link>}
+                </p>
+              )}
+
               <p className="alert alert-info">
-                Customers only see options that are switched on and in stock. When linked stock runs out, the option hides itself and comes back when you{' '}
-                <Link to="/stock">restock</Link>.
+                <span>
+                  Customers only see options that are switched on and in stock. When linked stock runs out, the option hides itself and comes back when you{' '}
+                  <Link to="/stock">restock</Link>.
+                </span>
               </p>
 
               {group.options.length === 0 ? (
                 <p className="muted">No options in this group yet. Add the first one below.</p>
               ) : (
                 <div className="table-wrap">
-                  <table className="table" style={{ minWidth: 600 }}>
+                  <table className="table table-stack" style={{ minWidth: 600 }}>
                     <thead>
                       <tr>
                         <th scope="col">Option</th>
@@ -143,7 +168,7 @@ export function BuilderOptionsPage() {
                     <tbody>
                       {group.options.map((o) => (
                         <tr key={o.id} className={o.available ? undefined : 'row-muted'}>
-                          <td>
+                          <td data-label="Option">
                             <span className="row" style={{ gap: 8 }}>
                               {group.kind === 'ICING_COLOUR' && o.value && (
                                 <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: 9, background: o.value, boxShadow: 'inset 0 0 0 1px rgba(43,27,20,0.2)' }} />
@@ -154,8 +179,8 @@ export function BuilderOptionsPage() {
                             </span>
                             {o.serves && <div className="sub">Serves about {o.serves}</div>}
                           </td>
-                          <td className="right nowrap">{o.price ? formatMoney(o.price, bakery.currency) : <span className="muted">Nothing</span>}</td>
-                          <td>
+                          <td data-label="Adds" className="right nowrap">{o.price ? formatMoney(o.price, bakery.currency) : <span className="muted">Nothing</span>}</td>
+                          <td data-label="Uses stock">
                             {o.stockItem ? (
                               <>
                                 <Link to="/stock" style={{ color: 'var(--ink)' }}>
@@ -171,7 +196,7 @@ export function BuilderOptionsPage() {
                               <span className="muted">Not linked</span>
                             )}
                           </td>
-                          <td>
+                          <td data-label="In the builder">
                             <label className="switch-label">
                               <input
                                 type="checkbox"
@@ -203,11 +228,54 @@ export function BuilderOptionsPage() {
                   toast(created ? `${name} added to ${group.name}.` : `${name} saved.`)
                 }}
                 onCancel={() => setEditing(null)}
+                onDelete={() => editing && setDeletingOption(editing)}
               />
+
+              <div style={{ paddingTop: 18, borderTop: '1px solid var(--line)' }}>
+                <button type="button" className="btn btn-sm btn-quiet-danger" onClick={() => setDeletingGroup(group)}>
+                  Delete the {group.name} group
+                </button>
+              </div>
             </section>
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={deletingOption !== null}
+        title={`Delete ${deletingOption?.name ?? 'this option'}?`}
+        confirmLabel="Delete option"
+        tone="danger"
+        onClose={() => setDeletingOption(null)}
+        onConfirm={async () => {
+          if (!deletingOption) return
+          await deleteOption(bakery.id, deletingOption.id)
+          setEditing(null)
+          groups.reload()
+          toast(`${deletingOption.name} deleted.`)
+        }}
+      >
+        <p>Customers can't choose it any more. Orders that already have it keep the name and price they were placed with.</p>
+        <p className="muted">To take it away for a while instead, switch it off in the table.</p>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deletingGroup !== null}
+        title={`Delete ${deletingGroup?.name ?? 'this group'}${deletingGroup?.options.length ? ` and its ${deletingGroup.options.length} options` : ''}?`}
+        confirmLabel="Delete group"
+        tone="danger"
+        onClose={() => setDeletingGroup(null)}
+        onConfirm={async () => {
+          if (!deletingGroup) return
+          await deleteOptionGroup(bakery.id, deletingGroup.id)
+          setSelectedId(null)
+          setEditing(null)
+          groups.reload()
+          toast(`${deletingGroup.name} deleted.`)
+        }}
+      >
+        <p>It disappears from the cake builder. Orders that already used it keep the choices customers made. You can't undo this.</p>
+      </ConfirmDialog>
     </>
   )
 }
@@ -218,12 +286,14 @@ function OptionForm({
   stock,
   onDone,
   onCancel,
+  onDelete,
 }: {
   group: OptionGroup
   option: BuilderOption | null
   stock: StockItem[]
   onDone: (name: string, created: boolean) => void
   onCancel: () => void
+  onDelete: () => void
 }) {
   const { bakery } = useBakery()
   const [name, setName] = useState(option?.name ?? '')
@@ -240,6 +310,7 @@ function OptionForm({
     const amount = Number(price.replaceAll(',', ''))
     if (!name.trim()) return setError('Give the option a name customers will understand')
     if (!Number.isInteger(amount) || amount < 0) return setError('Enter the price as a whole number, or 0')
+    if (amount > MAX_AMOUNT) return setError('That price is too large')
     const data: OptionInput = {
       name: name.trim(),
       price: amount,
@@ -325,6 +396,11 @@ function OptionForm({
         {option && (
           <button type="button" className="btn btn-outline" onClick={onCancel}>
             Cancel
+          </button>
+        )}
+        {option && (
+          <button type="button" className="btn btn-quiet-danger" onClick={onDelete}>
+            Delete option
           </button>
         )}
       </div>

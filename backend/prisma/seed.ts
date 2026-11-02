@@ -109,6 +109,7 @@ async function seedSweetCrumbs() {
       closedWeekdays: [7],
       handoverTimes: ["09:00", "11:30", "14:00", "17:00"],
       occasions: ["Birthday", "Wedding", "Introduction", "Graduation", "Baby shower", "Anniversary", "Other"],
+      isPublished: true,
     },
     update: {
       handoverTimes: ["09:00", "11:30", "14:00", "17:00"],
@@ -178,6 +179,7 @@ async function seedMamasOven() {
       customNoticeDays: 7,
       handoverTimes: ["10:00", "13:00", "16:00"],
       occasions: ["Birthday", "Bridal Shower", "Corporate Event", "Graduation", "Baby shower", "Other"],
+      isPublished: true,
     },
   });
   if ((await prisma.product.count({ where: { bakeryId: bakery.id } })) === 0) {
@@ -200,7 +202,7 @@ async function main() {
   const staff = await prisma.user.upsert({
     where: { firebaseUid: "dev:dev-staff" },
     update: {},
-    create: { firebaseUid: "dev:dev-staff", name: "Dev Staff", email: "dev-staff@example.com" },
+    create: { firebaseUid: "dev:dev-staff", name: "Dev Staff", email: "dev-staff@example.com", emailVerified: true },
   });
   await prisma.bakeryMember.upsert({
     where: { bakeryId_userId: { bakeryId: sweetCrumbs.id, userId: staff.id } },

@@ -79,7 +79,7 @@ export function StockPage() {
       )}
       {shown.length > 0 && (
         <div className="table-wrap">
-          <table className="table" style={{ minWidth: 820 }}>
+          <table className="table table-stack-wide" style={{ minWidth: 820 }}>
             <thead>
               <tr>
                 <th scope="col">Item</th>
@@ -162,8 +162,8 @@ function StockRow({ item, onSaved, onDelete }: { item: StockItem; onSaved: (item
 
   return (
     <tr>
-      <td className="strong">{item.name}</td>
-      <td className="right nowrap" style={{ color: item.level === 'OUT' ? 'var(--danger)' : undefined, fontWeight: 600 }}>
+      <td data-label="Item" className="strong">{item.name}</td>
+      <td data-label="In stock" className="right nowrap" style={{ color: item.level === 'OUT' ? 'var(--danger)' : undefined, fontWeight: 600 }}>
         {editing ? (
           <form onSubmit={save} className="row" style={{ justifyContent: 'flex-end', gap: 6 }}>
             <label htmlFor={`qty-${item.id}`} className="visually-hidden">
@@ -183,12 +183,12 @@ function StockRow({ item, onSaved, onDelete }: { item: StockItem; onSaved: (item
           amount(item.quantity, item.unit)
         )}
       </td>
-      <td className="right nowrap muted">{amount(item.lowAt, item.unit)}</td>
-      <td>
+      <td data-label="Warn me at" className="right nowrap muted">{amount(item.lowAt, item.unit)}</td>
+      <td data-label="Status">
         <StockBadge level={item.level} />
       </td>
-      <td style={{ color: 'var(--ink-2)' }}>{item.options.length ? item.options.map((o) => o.name).join(', ') : <span className="muted">Not linked</span>}</td>
-      <td className="right nowrap">
+      <td data-label="Linked to builder" style={{ color: 'var(--ink-2)' }}>{item.options.length ? item.options.map((o) => o.name).join(', ') : <span className="muted">Not linked</span>}</td>
+      <td data-label="" className="right nowrap">
         {!editing && (
           <div className="row" style={{ justifyContent: 'flex-end', gap: 4 }}>
             <button

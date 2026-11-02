@@ -1,3 +1,6 @@
+// The API refuses amounts above this, matching MAX_AMOUNT in backend/src/lib/validation.ts.
+export const MAX_AMOUNT = 1_000_000_000
+
 // "UGX 165,000". Amounts are whole units of the bakery's currency.
 export const formatMoney = (amount: number | null | undefined, currency: string) =>
   amount == null ? 'Not set' : `${currency} ${amount.toLocaleString('en-US')}`

@@ -28,6 +28,19 @@ export type BakeryApplication = {
   status: BakeryApplicationStatus
   createdAt: string
   updatedAt: string
+  bakery: { id: string; name: string; slug: string; isPublished: boolean; isActive: boolean } | null
+  // Set once the bakery exists: whether the applicant has become its owner yet.
+  owner: OwnerStatus | null
+}
+
+export type OwnerStatus = 'LINKED' | 'INVITED' | 'NONE'
+
+export interface OnboardResult {
+  bakery: { id: string; name: string; slug: string }
+  owner: OwnerStatus
+  // CREATED: a Firebase account was made, so send the set-a-password email.
+  // EXISTING: they already have an account. UNAVAILABLE: Firebase isn't set up.
+  account: 'CREATED' | 'EXISTING' | 'UNAVAILABLE'
 }
 
 export const submitBakeryApplication = (data: BakeryApplicationInput) =>
@@ -35,8 +48,7 @@ export const submitBakeryApplication = (data: BakeryApplicationInput) =>
 
 export const listBakeryApplications = () => api<BakeryApplication[]>('/bakery-applications')
 
-export const updateBakeryApplicationStatus = (id: string, status: BakeryApplicationStatus) =>
+export const updateBakeryApplicationStatus = (id: string, status: Exclude<BakeryApplicationStatus, 'APPROVED'>) =>
   send<BakeryApplication>('PATCH', `/bakery-applications/${id}`, { status })
 
-export const onboardBakeryApplication = (id: string) =>
-  send<{ id: string; slug: string; name: string }>('POST', `/bakery-applications/${id}/onboard`)
+export const onboardBakeryApplication = (id: string) => send<OnboardResult>('POST', `/bakery-applications/${id}/onboard`)

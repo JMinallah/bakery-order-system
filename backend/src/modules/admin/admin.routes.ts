@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireRole } from "../../lib/access.js";
-import { badRequest, notFound } from "../../lib/http-error.js";
+import { badRequest, conflict, notFound } from "../../lib/http-error.js";
 import { prisma } from "../../lib/prisma.js";
 import { requireAuth } from "../../middleware/auth.js";
+import { assignOwner } from "../bakeries/bakeries.service.js";
+import { OPEN_STATUSES } from "../orders/order-rules.js";
 
 export const adminRouter = Router();
 
@@ -47,19 +49,36 @@ adminRouter.get("/bakeries", async (_req, res) => {
       phone: true,
       address: true,
       isActive: true,
+      isPublished: true,
       createdAt: true,
       _count: {
         select: {
           members: true,
           products: true,
           orders: true,
+          invites: true,
         },
       },
     },
     orderBy: { createdAt: "desc" },
   });
+  const [open, owners] = await Promise.all([
+    prisma.order.groupBy({ by: ["bakeryId"], where: { status: { in: OPEN_STATUSES } }, _count: true }),
+    prisma.bakeryMember.groupBy({ by: ["bakeryId"], where: { role: "OWNER" }, _count: true }),
+  ]);
+  const openBy = new Map(open.map((o) => [o.bakeryId, o._count]));
+  const ownersBy = new Map(owners.map((o) => [o.bakeryId, o._count]));
 
-  res.json(bakeries);
+  res.json(bakeries.map((b) => ({ ...b, openOrders: openBy.get(b.id) ?? 0, owners: ownersBy.get(b.id) ?? 0 })));
+});
+
+/**
+ * Gives a bakery an owner, e.g. when its only owner has left. The person joins now if their
+ * email is verified, or when they first sign in with it. The admin still can't see the bakery's data.
+ */
+adminRouter.post("/bakeries/:bakeryId/owner", async (req, res) => {
+  const { email } = z.object({ email: z.string().trim().email() }).parse(req.body);
+  res.status(201).json(await assignOwner(req.params.bakeryId, email));
 });
 
 const BakeryStatusInput = z.object({
@@ -126,6 +145,22 @@ adminRouter.patch("/users/:userId/role", async (req, res) => {
 
   const exists = await prisma.user.findUnique({ where: { id: req.params.userId }, select: { id: true } });
   if (!exists) throw notFound("User");
+
+  // Promotion removes every bakery membership, so it mustn't leave a bakery without an owner.
+  if (role === "ADMIN") {
+    const owned = await prisma.bakeryMember.findMany({
+      where: { userId: req.params.userId, role: "OWNER" },
+      select: { bakery: { select: { id: true, name: true } } },
+    });
+    const soleOwnerOf: string[] = [];
+    for (const { bakery } of owned) {
+      const owners = await prisma.bakeryMember.count({ where: { bakeryId: bakery.id, role: "OWNER" } });
+      if (owners <= 1) soleOwnerOf.push(bakery.name);
+    }
+    if (soleOwnerOf.length) {
+      throw conflict(`They're the only owner of ${soleOwnerOf.join(", ")}. Give that bakery another owner first`);
+    }
+  }
 
   // Admins must remain completely independent from bakeries.
   // If promoting to ADMIN, remove any existing bakery memberships.

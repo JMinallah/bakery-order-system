@@ -517,13 +517,40 @@ fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
 @media (max-width: 700px) {
   .table-wrap { border-radius: 14px; }
   .table { min-width: 0 !important; }
-  .table th:nth-child(5), .table td:nth-child(5),
-  .table th:nth-child(6), .table td:nth-child(6) { display: none; }
   .table th, .table td { padding: 12px 10px; }
   .table th:first-child, .table td:first-child { padding-left: 14px; }
   .table th:last-child, .table td:last-child { padding-right: 14px; }
   .calendar { min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .calendar button { min-height: 94px; }
+}
+
+/* When a table's box is narrower than the table needs (phones, tablets, small laptops),
+   each row becomes a small card: the first cell as its heading and the rest labelled from
+   data-label, so nothing hides off the right edge. Wide tables switch sooner. */
+.table-wrap { container-type: inline-size; }
+@container (max-width: 859px) {
+  .table-stack-wide thead { display: none; }
+  .table-stack-wide, .table-stack-wide tbody, .table-stack-wide tr { display: block; min-width: 0 !important; }
+  .table-stack-wide tr { padding: 14px 16px; border-top: 1px solid var(--line); }
+  .table-stack-wide tbody tr:first-child { border-top: none; }
+  .table-stack-wide td, .table-stack-wide td:first-child, .table-stack-wide td:last-child { display: block; position: relative; padding: 5px 0 5px 120px; border-top: none; text-align: left; white-space: normal; }
+  .table-stack-wide td::before { content: attr(data-label); position: absolute; left: 0; top: 7px; width: 108px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .table-stack-wide td:first-child { padding: 0 0 8px; font-size: 16px; }
+  .table-stack-wide td:first-child::before, .table-stack-wide td[data-label='']::before { content: none; }
+  .table-stack-wide td[data-label=''] { padding-left: 0; padding-top: 10px; }
+  .table-stack-wide tr:hover td { background: transparent; }
+}
+@container (max-width: 639px) {
+  .table-stack thead { display: none; }
+  .table-stack, .table-stack tbody, .table-stack tr { display: block; min-width: 0 !important; }
+  .table-stack tr { padding: 14px 16px; border-top: 1px solid var(--line); }
+  .table-stack tbody tr:first-child { border-top: none; }
+  .table-stack td, .table-stack td:first-child, .table-stack td:last-child { display: block; position: relative; padding: 5px 0 5px 120px; border-top: none; text-align: left; white-space: normal; }
+  .table-stack td::before { content: attr(data-label); position: absolute; left: 0; top: 7px; width: 108px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .table-stack td:first-child { padding: 0 0 8px; font-size: 16px; }
+  .table-stack td:first-child::before, .table-stack td[data-label='']::before { content: none; }
+  .table-stack td[data-label=''] { padding-left: 0; padding-top: 10px; }
+  .table-stack tr:hover td { background: transparent; }
 }
 
 /* ---- Empty and loading states ------------------------------------------- */
@@ -595,8 +622,9 @@ fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
 .application-card-details { display: flex; flex-wrap: wrap; gap: 8px 28px; color: var(--ink-2); }
 .application-card-details strong { color: var(--ink); margin-right: 5px; }
 .application-card-notes { padding: 14px 16px; background: var(--ground); color: var(--ink-2); }
-.application-status-field { width: min(240px, 100%); }
-.application-status-field select { min-height: 44px; padding: 0 12px; border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); }
+/* A select that sits in a row rather than a form field, e.g. a staff member's role. */
+.select-inline { min-height: 44px; padding: 0 12px; border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); }
+.select-inline:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-glow); }
 .status { display: inline-flex; align-items: center; min-height: 30px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .status-pending { color: var(--warn-ink); background: var(--warn-soft); }
 .status-contacted { color: var(--info); background: var(--info-soft); }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Amount, ImageUrl } from "../../lib/validation.js";
 import { PRODUCT_CATEGORIES } from "../products/products.schemas.js";
 
 // Keep in sync with the OptionKind enum in prisma/schema.prisma.
@@ -29,10 +30,10 @@ export const OptionGroupUpdate = GroupFields.partial();
 
 const OptionFields = z.object({
   name: z.string().trim().min(1).max(60),
-  price: z.number().int().nonnegative(),
+  price: Amount,
   value: z.string().max(40).nullable(),
   serves: z.number().int().positive().nullable(),
-  imageUrl: z.string().url().nullable(),
+  imageUrl: ImageUrl.nullable(),
   isActive: z.boolean(),
   position: z.number().int().min(0),
   stockItemId: z.string().min(1).nullable(),

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isDayKey } from "../../lib/dates.js";
+import { Amount, ImageUrl } from "../../lib/validation.js";
 
 const DayKey = z.string().refine(isDayKey, "Use a real date written as YYYY-MM-DD");
 
@@ -27,9 +28,9 @@ export const BakerySettingsUpdate = z
     phone: z.string().trim().max(30).nullable(),
     address: z.string().trim().max(200).nullable(),
     city: z.string().trim().min(1).max(80),
-    imageUrl: z.string().url().nullable(),
+    imageUrl: ImageUrl.nullable(),
     deliveryAreas: z.array(z.string().trim().min(1).max(80)).max(50),
-    deliveryFee: z.number().int().nonnegative(),
+    deliveryFee: Amount,
     pickupAvailable: z.boolean(),
     acceptsCash: z.boolean(),
     acceptsMobileMoney: z.boolean(),
@@ -39,6 +40,7 @@ export const BakerySettingsUpdate = z
     closedWeekdays: z.array(z.number().int().min(1).max(7)).max(7),
     handoverTimes: z.array(z.string().trim()).max(24),
     occasions: z.array(z.string().trim().min(1).max(50)).max(30),
+    quoteExpiryDays: z.number().int().min(1).max(30),
   })
   .partial();
 export type BakerySettingsUpdate = z.infer<typeof BakerySettingsUpdate>;
@@ -46,6 +48,10 @@ export type BakerySettingsUpdate = z.infer<typeof BakerySettingsUpdate>;
 export const MemberInput = z.object({
   email: z.string().trim().email(),
   role: z.enum(["OWNER", "STAFF"]).default("STAFF"),
+});
+
+export const MemberRoleInput = z.object({
+  role: z.enum(["OWNER", "STAFF"]),
 });
 
 export const BlockedDateInput = z.object({

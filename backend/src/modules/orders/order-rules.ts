@@ -6,6 +6,7 @@ import type { OrderStatus, OrderType, PaymentStatus } from "../../lib/prisma.js"
 //   STANDARD:      SUBMITTED → CONFIRMED (by staff) → PREPARING → READY → COMPLETED
 //   CUSTOM, BULK:  SUBMITTED → QUOTED (staff send a quote) → CONFIRMED (customer accepts) → ...
 //   Any open order can be CANCELLED; customers only until the bakery starts making it.
+//   Unanswered quotes and orders still unconfirmed on their due date are cancelled by the system.
 
 const label = (status: OrderStatus) => status.toLowerCase();
 
@@ -39,10 +40,35 @@ export function cancelError(status: OrderStatus, by: "CUSTOMER" | "BAKERY"): str
   return null;
 }
 
-export const canQuote = (status: OrderStatus) => status === "SUBMITTED" || status === "QUOTED";
+// Why staff can't send a quote, or null when they can.
+export function quoteError(order: { status: OrderStatus; type: OrderType }): string | null {
+  if (order.type === "STANDARD") return "Ready-made orders have a fixed price, so they don't need a quote";
+  if (order.status !== "SUBMITTED" && order.status !== "QUOTED") return "Quotes can only be sent before the order is confirmed";
+  return null;
+}
 
+// A deposit is often paid to hold the date while the customer decides on the quote.
 export const canRecordPayment = (status: OrderStatus) =>
-  status === "CONFIRMED" || status === "PREPARING" || status === "READY" || status === "COMPLETED";
+  status === "QUOTED" || status === "CONFIRMED" || status === "PREPARING" || status === "READY" || status === "COMPLETED";
+
+const DAY_MS = 24 * 3600_000;
+
+// When an unanswered quote stops holding the order's day.
+export const quoteExpiresAt = (sentAt: Date, expiryDays: number) => new Date(sentAt.getTime() + expiryDays * DAY_MS);
+
+// Why the system closes an order that nobody moved on, or null to leave it open.
+export function expiryReason(
+  order: { status: OrderStatus; dueDate: Date; latestQuoteAt: Date | null },
+  quoteExpiryDays: number,
+  now: Date,
+): string | null {
+  if (order.status !== "SUBMITTED" && order.status !== "QUOTED") return null;
+  if (order.dueDate <= now) return "The due date passed before the order was confirmed";
+  if (order.status === "QUOTED" && order.latestQuoteAt && quoteExpiresAt(order.latestQuoteAt, quoteExpiryDays) <= now) {
+    return "The quote expired before it was accepted";
+  }
+  return null;
+}
 
 export function paymentStatusFor(total: number | null, paid: number): PaymentStatus {
   if (paid <= 0) return "UNPAID";

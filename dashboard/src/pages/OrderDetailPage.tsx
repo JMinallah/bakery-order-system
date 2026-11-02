@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ApiError } from '../api/client'
 import { addComment, cancelOrder, getOrder, recordPayment, removePayment, sendQuotation, updateOrderStatus } from '../api/orders'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Icon } from '../components/Icon'
@@ -7,15 +8,17 @@ import { PaymentBadge, StatusBadge } from '../components/StatusBadge'
 import { useBakery } from '../context/bakery-context'
 import { useToast } from '../context/toast-context'
 import { useAsync } from '../hooks/useAsync'
-import { formatDateTime, formatMoney, orderRef } from '../lib/format'
+import { formatDateTime, formatMoney, MAX_AMOUNT, orderRef } from '../lib/format'
 import { resolveImageUrl } from '../lib/image'
 import {
+  CANCELLED_BY_LABELS,
   canQuote,
   canRecordPayment,
   isOpen,
   needsQuote,
   nextAction,
   orderTitle,
+  quoteExpiresAt,
   STATUS_LABELS,
   stepsFor,
   TYPE_LABELS,
@@ -46,7 +49,9 @@ function OrderView({ order, onChange, reload }: { order: Order; onChange: (o: Or
   const tz = bakery.timezone
   const [cancelling, setCancelling] = useState(false)
   const [moving, setMoving] = useState(false)
+  const [completingUnpaid, setCompletingUnpaid] = useState(false)
   const customerName = order.customer.name ?? 'The customer'
+  const owed = order.total != null ? order.total - order.amountPaid : 0
 
   const updated = (next: Order, message?: string) => {
     onChange(next)
@@ -54,14 +59,25 @@ function OrderView({ order, onChange, reload }: { order: Order; onChange: (o: Or
     if (message) toast(message)
   }
 
+  // Someone else changed the order first. Show what it is now rather than the stale page.
+  const reloadOnConflict = (e: unknown) => {
+    if (e instanceof ApiError && e.status === 409) reload()
+  }
+
   const next = nextAction(order)
+  const move = async () => {
+    if (!next) return
+    const result = await updateOrderStatus(order.id, next.status)
+    updated(result, `Order moved to ${STATUS_LABELS[next.status].toLowerCase()}. ${customerName} has been notified.`)
+  }
   const moveOn = async () => {
     if (!next) return
+    if (next.status === 'COMPLETED' && owed > 0) return setCompletingUnpaid(true)
     setMoving(true)
     try {
-      const result = await updateOrderStatus(order.id, next.status)
-      updated(result, `Order moved to ${STATUS_LABELS[next.status].toLowerCase()}. ${customerName} has been notified.`)
+      await move()
     } catch (e) {
+      reloadOnConflict(e)
       toast((e as Error).message, { tone: 'error' })
     } finally {
       setMoving(false)
@@ -102,7 +118,7 @@ function OrderView({ order, onChange, reload }: { order: Order; onChange: (o: Or
       {order.status === 'CANCELLED' && (
         <div className="alert alert-danger">
           <span>
-            <strong>Cancelled by {order.cancelledBy === 'CUSTOMER' ? 'the customer' : 'the bakery'}.</strong>
+            <strong>{order.cancelledBy ? CANCELLED_BY_LABELS[order.cancelledBy] : 'Cancelled'}.</strong>
             {order.cancelReason ? ` Reason: ${order.cancelReason}` : ''}
           </span>
         </div>
@@ -119,16 +135,49 @@ function OrderView({ order, onChange, reload }: { order: Order; onChange: (o: Or
           <section className="stack" aria-labelledby="customer-h">
             <h4 id="customer-h">Customer</h4>
             <span className="strong">{order.customer.name ?? 'No name given'}</span>
-            {order.customer.phone && <a href={`tel:${order.customer.phone.replaceAll(' ', '')}`}>{order.customer.phone}</a>}
+            {order.customer.phone ? (
+              <a href={`tel:${order.customer.phone.replaceAll(' ', '')}`}>{order.customer.phone}</a>
+            ) : (
+              <span className="small strong" style={{ color: 'var(--warn)' }}>
+                No phone number. Use Messages to reach them.
+              </span>
+            )}
             {order.customer.email && <span className="muted">{order.customer.email}</span>}
             {order.deliveryAddress && <span>{order.deliveryAddress}</span>}
           </section>
-          {needsQuote(order.type) && <QuoteSection order={order} onQuoted={reload} />}
-          <PaymentSection order={order} onChange={updated} />
+          {needsQuote(order.type) && <QuoteSection order={order} onQuoted={reload} onConflict={reloadOnConflict} />}
+          <PaymentSection order={order} onChange={updated} onConflict={reloadOnConflict} />
         </div>
       </div>
 
-      <CancelDialog open={cancelling} order={order} onClose={() => setCancelling(false)} onCancelled={(o) => updated(o, `Order cancelled. ${customerName} has been told why.`)} />
+      <CancelDialog
+        open={cancelling}
+        order={order}
+        onClose={() => setCancelling(false)}
+        onCancelled={(o) => updated(o, `Order cancelled. ${customerName} has been told why.`)}
+        onConflict={reloadOnConflict}
+      />
+
+      <ConfirmDialog
+        open={completingUnpaid}
+        title={`${next?.label ?? 'Complete'} with ${formatMoney(owed, order.currency)} still owed?`}
+        confirmLabel={next?.label ?? 'Complete'}
+        cancelLabel="Record the payment first"
+        onClose={() => setCompletingUnpaid(false)}
+        onConfirm={async () => {
+          try {
+            await move()
+          } catch (e) {
+            reloadOnConflict(e)
+            throw e
+          }
+        }}
+      >
+        <p>
+          {customerName} has paid {formatMoney(order.amountPaid, order.currency)} of {formatMoney(order.total, order.currency)}. If they paid the rest at
+          handover, record it in Payment first so your records add up. You can still record it afterwards.
+        </p>
+      </ConfirmDialog>
     </>
   )
 }
@@ -348,7 +397,7 @@ function MessagesSection({ order, onSent }: { order: Order; onSent: () => void }
   )
 }
 
-function QuoteSection({ order, onQuoted }: { order: Order; onQuoted: () => void }) {
+function QuoteSection({ order, onQuoted, onConflict }: { order: Order; onQuoted: () => void; onConflict: (e: unknown) => void }) {
   const { bakery } = useBakery()
   const toast = useToast()
   const latest = order.quotations[0]
@@ -383,6 +432,10 @@ function QuoteSection({ order, onQuoted }: { order: Order; onQuoted: () => void 
       setError('Enter the price as a whole number, for example 165000')
       return
     }
+    if (value > MAX_AMOUNT) {
+      setError('That price is too large')
+      return
+    }
     setSending(true)
     setError(null)
     try {
@@ -391,6 +444,7 @@ function QuoteSection({ order, onQuoted }: { order: Order; onQuoted: () => void 
       toast(`Quote sent. ${order.customer.name ?? 'The customer'} can now accept it in the app.`)
       onQuoted()
     } catch (err) {
+      onConflict(err)
       setError((err as Error).message)
     } finally {
       setSending(false)
@@ -404,7 +458,9 @@ function QuoteSection({ order, onQuoted }: { order: Order; onQuoted: () => void 
       {order.status === 'QUOTED' && latest && (
         <p className="alert alert-info" style={{ display: 'block' }}>
           <strong>{formatMoney(latest.amount, order.currency)}</strong> sent {formatDateTime(latest.createdAt, bakery.timezone)}. Waiting for{' '}
-          {order.customer.name ?? 'the customer'} to accept. Sending a new quote replaces it.
+          {order.customer.name ?? 'the customer'} to accept. Sending a new quote replaces it. If there's no answer by{' '}
+          {formatDateTime(quoteExpiresAt(latest.createdAt, bakery.quoteExpiryDays).toISOString(), bakery.timezone)}, the order is cancelled and the day
+          opens up again.
         </p>
       )}
 
@@ -453,13 +509,24 @@ function QuoteSection({ order, onQuoted }: { order: Order; onQuoted: () => void 
         <button type="submit" className="btn btn-primary" disabled={sending}>
           {sending ? 'Sending…' : order.status === 'QUOTED' ? 'Send new quote' : 'Send quote'}
         </button>
-        <span className="hint">The customer gets a notification and can accept it or ask for changes.</span>
+        <span className="hint">
+          The customer gets a notification and can accept it or ask for changes. Unanswered quotes are cancelled after {bakery.quoteExpiryDays}{' '}
+          {bakery.quoteExpiryDays === 1 ? 'day' : 'days'}.
+        </span>
       </form>
     </section>
   )
 }
 
-function PaymentSection({ order, onChange }: { order: Order; onChange: (o: Order, message?: string) => void }) {
+function PaymentSection({
+  order,
+  onChange,
+  onConflict,
+}: {
+  order: Order
+  onChange: (o: Order, message?: string) => void
+  onConflict: (e: unknown) => void
+}) {
   const { bakery } = useBakery()
   const methods: PaymentMethod[] = [...(bakery.acceptsMobileMoney ? ['MOBILE_MONEY' as const] : []), ...(bakery.acceptsCash ? ['CASH' as const] : [])]
   const owed = order.total != null ? Math.max(order.total - order.amountPaid, 0) : null
@@ -536,7 +603,7 @@ function PaymentSection({ order, onChange }: { order: Order; onChange: (o: Order
           {order.status === 'CANCELLED'
             ? 'This order is cancelled.'
             : needsQuote(order.type)
-              ? 'You can record a deposit once the customer accepts the quote.'
+              ? 'You can record a deposit once you have sent a quote.'
               : 'You can record payments once you confirm the order.'}{' '}
           Money is never taken through the system.
         </p>
@@ -587,7 +654,10 @@ function PaymentSection({ order, onChange }: { order: Order; onChange: (o: Order
         confirmLabel="Record payment"
         onClose={() => setConfirming(false)}
         onConfirm={async () => {
-          const result = await recordPayment(order.id, { amount: value, method, note: note.trim() })
+          const result = await recordPayment(order.id, { amount: value, method, note: note.trim() }).catch((e: unknown) => {
+            onConflict(e)
+            throw e
+          })
           setNote('')
           const left = result.total != null ? result.total - result.amountPaid : null
           setAmount(left ? String(left) : '')
@@ -632,7 +702,19 @@ function PaymentSection({ order, onChange }: { order: Order; onChange: (o: Order
 
 const CANCEL_REASONS = ["We're fully booked that day", "We can't make this design", 'The customer asked us to cancel', 'Something else']
 
-function CancelDialog({ open, order, onClose, onCancelled }: { open: boolean; order: Order; onClose: () => void; onCancelled: (o: Order) => void }) {
+function CancelDialog({
+  open,
+  order,
+  onClose,
+  onCancelled,
+  onConflict,
+}: {
+  open: boolean
+  order: Order
+  onClose: () => void
+  onCancelled: (o: Order) => void
+  onConflict: (e: unknown) => void
+}) {
   const [reason, setReason] = useState(CANCEL_REASONS[0]!)
   const [other, setOther] = useState('')
   const name = order.customer.name ?? 'The customer'
@@ -648,10 +730,19 @@ function CancelDialog({ open, order, onClose, onCancelled }: { open: boolean; or
       onConfirm={async () => {
         const text = reason === 'Something else' ? other.trim() : reason
         if (!text) throw new Error('Tell the customer why')
-        onCancelled(await cancelOrder(order.id, text))
+        const result = await cancelOrder(order.id, text).catch((e: unknown) => {
+          onConflict(e)
+          throw e
+        })
+        onCancelled(result)
       }}
     >
       <p>{name} gets a notification straight away. You can't undo this.</p>
+      {order.amountPaid > 0 && (
+        <p className="strong">
+          {name} has paid {formatMoney(order.amountPaid, order.currency)}. Arrange the refund with them directly; the payment records stay on the order.
+        </p>
+      )}
       <div className="field">
         <label htmlFor="cancel-reason">Reason, shown to the customer</label>
         <select id="cancel-reason" value={reason} onChange={(e) => setReason(e.target.value)}>

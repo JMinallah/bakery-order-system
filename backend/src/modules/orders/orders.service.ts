@@ -11,12 +11,13 @@ import { assertDueDateAvailable } from "../bakeries/availability.service.js";
 import { findActiveBakery, sameText } from "../bakeries/bakeries.service.js";
 import { loadGroups } from "../builder/builder.service.js";
 import { resolveSelections, type ResolvedSelection } from "../builder/selection.js";
+import { MAX_AMOUNT, uploadIdFrom } from "../../lib/validation.js";
 import {
-  canQuote,
   canRecordPayment,
   cancelError,
   OPEN_STATUSES,
   paymentStatusFor,
+  quoteError,
   staffStatusError,
 } from "./order-rules.js";
 import type { BakeryOrdersQuery, CreateOrderInput, PaymentInput } from "./orders.schemas.js";
@@ -218,6 +219,16 @@ export async function createOrder(user: User, input: CreateOrderInput) {
     input.type === "STANDARD"
       ? input.items.reduce((sum, i) => sum + productById.get(i.productId)!.price * i.quantity, 0) + deliveryFee
       : null;
+  if ((total ?? 0) > MAX_AMOUNT || (estimate ?? 0) > MAX_AMOUNT) {
+    throw badRequest("This order is too large to place in the app. Please contact the bakery");
+  }
+
+  // Photos must be ones uploaded through the API (the schema checked the link's shape).
+  const photoUrls = [...input.inspirationImageUrls, ...(input.designImageUrl ? [input.designImageUrl] : [])];
+  const uploadIds = [...new Set(photoUrls.map((url) => uploadIdFrom(url)!))];
+  if (uploadIds.length && (await prisma.upload.count({ where: { id: { in: uploadIds } } })) !== uploadIds.length) {
+    throw badRequest("A photo on this order couldn't be found. Please add it again");
+  }
 
   const { bakeryId: _bakeryId, items, optionIds: _optionIds, inspirationImageUrls, deliveryArea: _area, ...fields } = input;
   try {
@@ -274,25 +285,45 @@ const statusMessages: Partial<Record<OrderStatus, (pickup: boolean) => string>> 
   COMPLETED: () => "Your order is complete. Enjoy!",
 };
 
+// Locks the order's row until the transaction ends, so two people changing the same order
+// take turns, and each check below sees what the other one just saved.
+async function lockOrder(tx: Prisma.TransactionClient, id: string) {
+  await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${id} FOR UPDATE`;
+  return tx.order.findUniqueOrThrow({
+    where: { id },
+    select: {
+      status: true,
+      type: true,
+      total: true,
+      amountPaid: true,
+      quotations: { orderBy: { createdAt: "desc" }, take: 1, select: { id: true, amount: true } },
+    },
+  });
+}
+
 export async function updateStatus(user: User, id: string, status: OrderStatus) {
   const order = await loadForStaff(user, id);
-  const error = staffStatusError(order, status);
-  if (error) throw conflict(error);
-  const updated = await prisma.order.update({ where: { id }, data: { status }, include: orderDetail });
+  const updated = await prisma.$transaction(async (tx) => {
+    const error = staffStatusError(await lockOrder(tx, id), status);
+    if (error) throw conflict(error);
+    return tx.order.update({ where: { id }, data: { status }, include: orderDetail });
+  });
   const message = statusMessages[status];
   if (message) {
     void notifyUser(order.customerId, { title: `Order BK${order.number}`, body: message(order.fulfilment === "PICKUP"), orderId: id });
   }
-  return updated;
+  return normalizeOrderUrls(updated);
 }
 
 export async function addQuotation(user: User, id: string, amount: number, note?: string) {
   const order = await loadForStaff(user, id);
-  if (!canQuote(order.status)) throw conflict("Quotes can only be sent before the order is confirmed");
-  const [quotation] = await prisma.$transaction([
-    prisma.quotation.create({ data: { orderId: id, amount, note, createdById: user.id } }),
-    prisma.order.update({ where: { id }, data: { status: "QUOTED" } }),
-  ]);
+  const quotation = await prisma.$transaction(async (tx) => {
+    const error = quoteError(await lockOrder(tx, id));
+    if (error) throw conflict(error);
+    const created = await tx.quotation.create({ data: { orderId: id, amount, note, createdById: user.id } });
+    await tx.order.update({ where: { id }, data: { status: "QUOTED" } });
+    return created;
+  });
   void notifyUser(order.customerId, {
     title: "Your quote is ready",
     body: `${order.bakery.name}: ${formatMoney(amount, order.currency)}`,
@@ -304,25 +335,27 @@ export async function addQuotation(user: User, id: string, amount: number, note?
 export async function acceptQuote(user: User, id: string, quotationId: string) {
   const { order, isCustomer } = await loadForUser(user, id);
   if (!isCustomer) throw forbidden();
-  if (order.status !== "QUOTED") throw conflict("There's no quote waiting for an answer on this order");
-  const latest = order.quotations[0];
-  if (!latest || latest.id !== quotationId) {
-    throw conflict("The bakery has sent a newer quote. Please look at it before accepting");
-  }
-  const updated = await prisma.$transaction(async (tx) => {
+  const { updated, amount } = await prisma.$transaction(async (tx) => {
+    const current = await lockOrder(tx, id);
+    if (current.status !== "QUOTED") throw conflict("There's no quote waiting for an answer on this order");
+    const latest = current.quotations[0];
+    if (!latest || latest.id !== quotationId) {
+      throw conflict("The bakery has sent a newer quote. Please look at it before accepting");
+    }
     await tx.quotation.update({ where: { id: latest.id }, data: { acceptedAt: new Date() } });
-    return tx.order.update({
+    const saved = await tx.order.update({
       where: { id },
-      data: { status: "CONFIRMED", total: latest.amount, paymentStatus: paymentStatusFor(latest.amount, order.amountPaid) },
+      data: { status: "CONFIRMED", total: latest.amount, paymentStatus: paymentStatusFor(latest.amount, current.amountPaid) },
       include: orderDetail,
     });
+    return { updated: saved, amount: latest.amount };
   });
   void notifyBakery(order.bakeryId, {
     title: "Quote accepted",
-    body: `BK${order.number}: ${formatMoney(latest.amount, order.currency)}`,
+    body: `BK${order.number}: ${formatMoney(amount, order.currency)}`,
     orderId: id,
   });
-  return updated;
+  return normalizeOrderUrls(updated);
 }
 
 // The customer cancels their own order; staff cancel any order of their bakery and must say why.
@@ -331,13 +364,15 @@ export async function cancelOrder(user: User, id: string, reason?: string) {
   const by = isCustomer ? "CUSTOMER" : "BAKERY";
   if (by === "BAKERY" && !isStaff) throw forbidden();
   if (by === "BAKERY" && !reason) throw badRequest("Tell the customer why the order is cancelled");
-  const error = cancelError(order.status, by);
-  if (error) throw conflict(error);
 
-  const updated = await prisma.order.update({
-    where: { id },
-    data: { status: "CANCELLED", cancelledBy: by, cancelReason: reason },
-    include: orderDetail,
+  const updated = await prisma.$transaction(async (tx) => {
+    const error = cancelError((await lockOrder(tx, id)).status, by);
+    if (error) throw conflict(error);
+    return tx.order.update({
+      where: { id },
+      data: { status: "CANCELLED", cancelledBy: by, cancelReason: reason },
+      include: orderDetail,
+    });
   });
   const notification = {
     title: `Order BK${order.number} cancelled`,
@@ -345,7 +380,7 @@ export async function cancelOrder(user: User, id: string, reason?: string) {
     orderId: id,
   };
   void (by === "CUSTOMER" ? notifyBakery(order.bakeryId, notification) : notifyUser(order.customerId, notification));
-  return updated;
+  return normalizeOrderUrls(updated);
 }
 
 // ---------------------------------------------------------------------------
@@ -364,30 +399,36 @@ async function refreshPaymentTotals(tx: Prisma.TransactionClient, orderId: strin
 
 export async function addPayment(user: User, id: string, payment: PaymentInput) {
   const order = await loadForStaff(user, id);
-  if (!canRecordPayment(order.status)) throw conflict("Payments can be recorded once the order is confirmed");
-  if (order.total !== null && order.amountPaid + payment.amount > order.total) {
-    throw badRequest(`That's more than the ${formatMoney(order.total - order.amountPaid, order.currency)} still owed`);
-  }
   const updated = await prisma.$transaction(async (tx) => {
+    const current = await lockOrder(tx, id);
+    if (!canRecordPayment(current.status)) {
+      throw conflict("Payments can be recorded once you've sent a quote or confirmed the order");
+    }
+    if (current.total !== null && current.amountPaid + payment.amount > current.total) {
+      throw badRequest(`That's more than the ${formatMoney(current.total - current.amountPaid, order.currency)} still owed`);
+    }
+    if (current.amountPaid + payment.amount > MAX_AMOUNT) throw badRequest("That amount is too large");
     await tx.payment.create({ data: { ...payment, orderId: id, recordedById: user.id } });
-    return refreshPaymentTotals(tx, id, order.total);
+    return refreshPaymentTotals(tx, id, current.total);
   });
   void notifyUser(order.customerId, {
     title: "Payment recorded",
     body: `${order.bakery.name} received ${formatMoney(payment.amount, order.currency)}.`,
     orderId: id,
   });
-  return updated;
+  return normalizeOrderUrls(updated);
 }
 
 // For correcting a payment entered by mistake.
 export async function deletePayment(user: User, id: string, paymentId: string) {
-  const order = await loadForStaff(user, id);
-  if (!order.payments.some((p) => p.id === paymentId)) throw notFound("Payment");
-  return prisma.$transaction(async (tx) => {
-    await tx.payment.delete({ where: { id: paymentId } });
-    return refreshPaymentTotals(tx, id, order.total);
+  await loadForStaff(user, id);
+  const updated = await prisma.$transaction(async (tx) => {
+    const current = await lockOrder(tx, id);
+    const { count } = await tx.payment.deleteMany({ where: { id: paymentId, orderId: id } });
+    if (!count) throw notFound("Payment");
+    return refreshPaymentTotals(tx, id, current.total);
   });
+  return normalizeOrderUrls(updated);
 }
 
 // ---------------------------------------------------------------------------
@@ -405,6 +446,8 @@ export async function addComment(user: User, id: string, body: string) {
     data: { orderId: id, authorId: user.id, body, fromBakery },
     include: { author: { select: { id: true, name: true } } },
   });
+  // A reply from the bakery counts as looking after the order, so it leaves "needs attention".
+  if (fromBakery) await prisma.order.update({ where: { id }, data: { updatedAt: new Date() } });
   if (fromBakery) {
     void notifyUser(order.customerId, { title: `Message from ${order.bakery.name}`, body, orderId: id });
   } else {

@@ -9,8 +9,9 @@ export const BakeryApplicationInput = z.object({
   notes: z.string().trim().max(1000).optional(),
 });
 
+// Approval happens through onboarding, which creates the bakery.
 export const BakeryApplicationStatusUpdate = z.object({
-  status: z.enum(["PENDING", "CONTACTED", "APPROVED", "DECLINED"]),
+  status: z.enum(["PENDING", "CONTACTED", "DECLINED"]),
 });
 
 export type BakeryApplicationInput = z.infer<typeof BakeryApplicationInput>;

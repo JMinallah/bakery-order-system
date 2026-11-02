@@ -60,8 +60,18 @@ export const isOpen = (status: OrderStatus) => status !== 'COMPLETED' && status 
 
 export const canQuote = (status: OrderStatus) => status === 'SUBMITTED' || status === 'QUOTED'
 
+// A deposit can hold the date while the customer thinks about the quote.
 export const canRecordPayment = (status: OrderStatus) =>
-  status === 'CONFIRMED' || status === 'PREPARING' || status === 'READY' || status === 'COMPLETED'
+  status === 'QUOTED' || status === 'CONFIRMED' || status === 'PREPARING' || status === 'READY' || status === 'COMPLETED'
+
+// When an unanswered quote is cancelled automatically, freeing the day.
+export const quoteExpiresAt = (sentAt: string, expiryDays: number) => new Date(new Date(sentAt).getTime() + expiryDays * 24 * 3600_000)
+
+export const CANCELLED_BY_LABELS: Record<NonNullable<OrderBase['cancelledBy']>, string> = {
+  CUSTOMER: 'Cancelled by the customer',
+  BAKERY: 'Cancelled by the bakery',
+  SYSTEM: 'Closed automatically',
+}
 
 // Same rule as the backend's needsAttention count: open, due within 48 hours, untouched for a day.
 export function needsAttention(order: Pick<OrderBase, 'status' | 'dueDate' | 'updatedAt'>, now = Date.now()) {

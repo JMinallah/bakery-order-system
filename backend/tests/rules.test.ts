@@ -3,7 +3,15 @@ import { addDays, dayKey, isDayKey, isoWeekday } from "../src/lib/dates.js";
 import { orderNeedsDeadlineReminder } from "../src/jobs/deadline-reminders.js";
 import { buildCalendar, dayStatus, type CapacityRules } from "../src/modules/bakeries/availability.js";
 import { isAvailable, resolveSelections, type BuilderGroup } from "../src/modules/builder/selection.js";
-import { cancelError, paymentStatusFor, staffStatusError } from "../src/modules/orders/order-rules.js";
+import { uploadIdFrom } from "../src/lib/validation.js";
+import {
+  canRecordPayment,
+  cancelError,
+  expiryReason,
+  paymentStatusFor,
+  quoteError,
+  staffStatusError,
+} from "../src/modules/orders/order-rules.js";
 import { stockLevel } from "../src/modules/stock/stock-level.js";
 import { detectImageType } from "../src/modules/uploads/image-type.js";
 
@@ -115,6 +123,29 @@ describe("order status rules", () => {
     expect(cancelError("COMPLETED", "BAKERY")).toMatch(/already completed/);
   });
 
+  it("only quotes custom and bulk orders that aren't confirmed yet", () => {
+    expect(quoteError({ status: "SUBMITTED", type: "CUSTOM" })).toBeNull();
+    expect(quoteError({ status: "QUOTED", type: "BULK" })).toBeNull();
+    expect(quoteError({ status: "SUBMITTED", type: "STANDARD" })).toMatch(/fixed price/);
+    expect(quoteError({ status: "CONFIRMED", type: "CUSTOM" })).toMatch(/before the order is confirmed/);
+  });
+
+  it("records deposits from the moment a quote is sent", () => {
+    expect(canRecordPayment("SUBMITTED")).toBe(false);
+    expect(canRecordPayment("QUOTED")).toBe(true);
+    expect(canRecordPayment("CANCELLED")).toBe(false);
+  });
+
+  it("closes unanswered quotes and orders that missed their day", () => {
+    const now = new Date("2026-11-09T12:00:00Z");
+    const due = new Date("2026-11-20T11:00:00Z");
+    const quote = (sent: string) => ({ status: "QUOTED" as const, dueDate: due, latestQuoteAt: new Date(sent) });
+    expect(expiryReason(quote("2026-11-05T12:00:00Z"), 7, now)).toBeNull();
+    expect(expiryReason(quote("2026-11-01T12:00:00Z"), 7, now)).toMatch(/quote expired/);
+    expect(expiryReason({ status: "SUBMITTED", dueDate: new Date("2026-11-09T08:00:00Z"), latestQuoteAt: null }, 7, now)).toMatch(/due date passed/);
+    expect(expiryReason({ status: "CONFIRMED", dueDate: new Date("2026-11-09T08:00:00Z"), latestQuoteAt: null }, 7, now)).toBeNull();
+  });
+
   it("works out the payment status", () => {
     expect(paymentStatusFor(165000, 0)).toBe("UNPAID");
     expect(paymentStatusFor(165000, 80000)).toBe("DEPOSIT_PAID");
@@ -172,6 +203,13 @@ describe("stock levels", () => {
 });
 
 describe("photo uploads", () => {
+  it("reads the upload id from links built with any host, and nothing else", () => {
+    expect(uploadIdFrom("https://api.example.com/api/uploads/cm3abc_1")).toBe("cm3abc_1");
+    expect(uploadIdFrom("http://10.0.2.2:4000/api/uploads/cm3abc")).toBe("cm3abc");
+    expect(uploadIdFrom("https://evil.example/cake.jpg")).toBeNull();
+    expect(uploadIdFrom("javascript:alert(1)//uploads/abc")).toBeNull();
+  });
+
   it("knows images by their first bytes, not their name", () => {
     expect(detectImageType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))).toBe("image/jpeg");
     expect(detectImageType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe("image/png");

@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { useState } from 'react'
 import { useBakery } from '../context/bakery-context'
@@ -104,8 +104,36 @@ export function Layout() {
         </div>
       </aside>
       <main className="main">
+        <BakeryNotice />
         <Outlet />
       </main>
     </div>
   )
+}
+
+// Why customers can't see the bakery right now, on every page until it's sorted.
+function BakeryNotice() {
+  const { bakery, isOwner } = useBakery()
+  if (!bakery.isActive) {
+    return (
+      <p className="alert alert-danger" role="status">
+        <span>
+          <strong>{bakery.name} is suspended by the platform.</strong> Customers can't find it or place new orders. Finish your open orders as usual, and
+          contact the platform team if you think this is a mistake.
+        </span>
+      </p>
+    )
+  }
+  if (!bakery.isPublished) {
+    return (
+      <p className="alert alert-info" role="status">
+        <span>
+          <strong>Customers can't see {bakery.name} yet.</strong>{' '}
+          {isOwner ? 'Add your products and delivery details, then publish it.' : 'The owner publishes it from Settings once setup is done.'}
+        </span>
+        {isOwner && <Link to="/settings#go-live">Finish setup</Link>}
+      </p>
+    )
+  }
+  return null
 }

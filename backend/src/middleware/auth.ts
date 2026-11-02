@@ -2,11 +2,12 @@ import type { NextFunction, Request, Response } from "express";
 import { env, isProduction } from "../config/env.js";
 import { firebaseAuth, firebaseConfigured } from "../lib/firebase.js";
 import { HttpError } from "../lib/http-error.js";
-import { prisma, type User } from "../lib/prisma.js";
+import { prisma, type Role, type User } from "../lib/prisma.js";
 
 interface Identity {
   uid: string;
   email?: string;
+  emailVerified: boolean;
   name?: string;
   dev?: { role: "CUSTOMER" | "STAFF" | "ADMIN"; bakerySlug: string };
 }
@@ -26,6 +27,9 @@ async function identify<P>(req: Request<P>): Promise<Identity> {
       return {
         uid: `dev:${devUser}`,
         name: devUser,
+        // Lets tests act as someone with an email, verified unless x-dev-unverified is "true".
+        email: req.header("x-dev-email") ?? undefined,
+        emailVerified: req.header("x-dev-unverified") !== "true",
         dev: {
           role: role === "STAFF" || role === "ADMIN" ? role : "CUSTOMER",
           bakerySlug: req.header("x-dev-bakery") ?? DEFAULT_DEV_BAKERY,
@@ -41,6 +45,7 @@ async function identify<P>(req: Request<P>): Promise<Identity> {
     return {
       uid: "dev:customer",
       name: "Customer",
+      emailVerified: false,
       dev: {
         role: "CUSTOMER",
         bakerySlug: DEFAULT_DEV_BAKERY,
@@ -51,30 +56,31 @@ async function identify<P>(req: Request<P>): Promise<Identity> {
   const auth = firebaseAuth();
   try {
     const decoded = await auth.verifyIdToken(token, isProduction);
-    return { uid: decoded.uid, email: decoded.email, name: decoded.name };
+    return { uid: decoded.uid, email: decoded.email, emailVerified: decoded.email_verified === true, name: decoded.name };
   } catch {
     throw new HttpError(401, "Invalid or expired token");
   }
 }
 
-async function loadUser({ uid, email, name, dev }: Identity): Promise<User> {
-  const role = dev?.role === "ADMIN" ? "ADMIN" : "CUSTOMER";
-  let user: User;
-  try {
-    user = await prisma.user.upsert({
-      where: { firebaseUid: uid },
-      update: dev ? { role } : {},
-      create: { firebaseUid: uid, email, name, role },
-    });
-  } catch (error) {
-    // Handle race condition if concurrent requests race to create the same user
-    const existing = await prisma.user.findUnique({ where: { firebaseUid: uid } });
-    if (existing) {
-      user = existing;
-    } else {
-      throw error;
+async function loadUser({ uid, email, emailVerified, name, dev }: Identity): Promise<User> {
+  const role: Role = dev?.role === "ADMIN" ? "ADMIN" : "CUSTOMER";
+  let user = await prisma.user.findUnique({ where: { firebaseUid: uid } });
+  if (!user) {
+    try {
+      user = await prisma.user.create({ data: { firebaseUid: uid, email, emailVerified, name, role } });
+    } catch (error) {
+      // Two first requests from the same person raced to create the account.
+      user = await prisma.user.findUnique({ where: { firebaseUid: uid } });
+      if (!user) throw error;
     }
   }
+  // Keep the email in step with Firebase, which changes when it is verified or edited.
+  const changes = {
+    ...(email !== undefined && email !== user.email ? { email } : {}),
+    ...(emailVerified !== user.emailVerified ? { emailVerified } : {}),
+    ...(dev && role !== user.role ? { role } : {}),
+  };
+  if (Object.keys(changes).length) user = await prisma.user.update({ where: { id: user.id }, data: changes });
   // Dev staff are made owners of the bakery they name, so every dashboard screen works locally.
   if (dev?.role === "STAFF") {
     const bakery = await prisma.bakery.findUnique({ where: { slug: dev.bakerySlug }, select: { id: true } });

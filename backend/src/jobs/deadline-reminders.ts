@@ -61,10 +61,9 @@ export async function runDeadlineReminderCheck(now: Date = new Date()) {
       });
       sent += 1;
     } finally {
-      await prisma.order.updateMany({
-        where: { id: { in: orderIds } },
-        data: { lastReminderAt: now },
-      });
+      // Raw SQL so updatedAt stays put: a reminder is not someone looking after the order,
+      // and the dashboard's "needs attention" count goes by updatedAt.
+      await prisma.$executeRaw`UPDATE "Order" SET "lastReminderAt" = ${now} WHERE id = ANY(${orderIds})`;
     }
   }
 

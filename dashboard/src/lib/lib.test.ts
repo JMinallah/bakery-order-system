@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addDays, dayKey, dueHint, formatDay, formatMoney, formatTime, mondayOf } from './format'
-import { canRecordPayment, needsAttention, nextAction, orderTitle, stepsFor, waitingFor } from './order-flow'
+import { canRecordPayment, needsAttention, nextAction, orderTitle, quoteExpiresAt, stepsFor, waitingFor } from './order-flow'
 
 const TZ = 'Africa/Kampala'
 
@@ -53,9 +53,15 @@ describe('order flow', () => {
     expect(waitingFor({ status: 'PREPARING', type: 'CUSTOM' })).toBe('')
   })
 
-  it('only takes payments after confirmation', () => {
-    expect(canRecordPayment('QUOTED')).toBe(false)
+  it('takes deposits from the moment a quote is sent', () => {
+    expect(canRecordPayment('SUBMITTED')).toBe(false)
+    expect(canRecordPayment('QUOTED')).toBe(true)
     expect(canRecordPayment('CONFIRMED')).toBe(true)
+    expect(canRecordPayment('CANCELLED')).toBe(false)
+  })
+
+  it('works out when an unanswered quote expires', () => {
+    expect(quoteExpiresAt('2026-11-01T10:00:00Z', 7).toISOString()).toBe('2026-11-08T10:00:00.000Z')
   })
 
   it('flags orders due soon that nobody touched', () => {

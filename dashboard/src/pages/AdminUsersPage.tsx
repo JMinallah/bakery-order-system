@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { listPlatformUsers, updateUserRole, type PlatformUser } from '../api/admin'
 import { getMe } from '../api/bakeries'
 import { ApiError } from '../api/client'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { useToast } from '../context/toast-context'
 import type { Me } from '../types/api'
 
 export function AdminUsersPage() {
@@ -9,7 +11,8 @@ export function AdminUsersPage() {
   const [me, setMe] = useState<Me | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [changing, setChanging] = useState<PlatformUser | null>(null)
+  const toast = useToast()
 
   useEffect(() => {
     Promise.all([listPlatformUsers(), getMe()])
@@ -21,27 +24,13 @@ export function AdminUsersPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  async function handleToggleRole(targetUser: PlatformUser) {
+  async function changeRole(targetUser: PlatformUser) {
     const nextRole = targetUser.role === 'ADMIN' ? 'CUSTOMER' : 'ADMIN'
-    const promptMsg =
-      nextRole === 'ADMIN'
-        ? `Grant platform administrator rights to ${targetUser.email ?? 'this user'}?`
-        : `Revoke platform administrator rights from ${targetUser.email ?? 'this user'}?`
-
-    if (!window.confirm(promptMsg)) return
-
-    setUpdatingId(targetUser.id)
-    setError(null)
-    try {
-      const updated = await updateUserRole(targetUser.id, nextRole)
-      setUsers((current) =>
-        current.map((u) => (u.id === updated.id ? { ...u, role: updated.role } : u)),
-      )
-    } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : 'Could not update user role.')
-    } finally {
-      setUpdatingId(null)
-    }
+    const updated = await updateUserRole(targetUser.id, nextRole)
+    setUsers((current) =>
+      current.map((u) => (u.id === updated.id ? { ...u, role: updated.role, _count: { ...u._count, memberships: nextRole === 'ADMIN' ? 0 : u._count.memberships } } : u)),
+    )
+    toast(nextRole === 'ADMIN' ? `${targetUser.email ?? 'They'} can now use the admin console.` : `${targetUser.email ?? 'They'} is no longer an admin.`)
   }
 
   return (
@@ -128,15 +117,11 @@ export function AdminUsersPage() {
                     <button
                       type="button"
                       className={`btn btn-sm ${user.role === 'ADMIN' ? 'btn-outline' : 'btn-dark'}`}
-                      disabled={isCurrentMe || updatingId === user.id}
+                      disabled={isCurrentMe}
                       title={isCurrentMe ? 'You cannot remove your own admin privileges' : undefined}
-                      onClick={() => void handleToggleRole(user)}
+                      onClick={() => setChanging(user)}
                     >
-                      {updatingId === user.id
-                        ? 'Saving…'
-                        : user.role === 'ADMIN'
-                        ? 'Revoke Admin'
-                        : 'Promote to Admin'}
+                      {user.role === 'ADMIN' ? 'Revoke Admin' : 'Promote to Admin'}
                     </button>
                   </div>
                 </article>
@@ -145,6 +130,30 @@ export function AdminUsersPage() {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={changing !== null}
+        title={changing?.role === 'ADMIN' ? `Remove admin rights from ${changing.email ?? 'this user'}?` : `Make ${changing?.email ?? 'this user'} a platform admin?`}
+        confirmLabel={changing?.role === 'ADMIN' ? 'Remove admin rights' : 'Make admin'}
+        tone={changing?.role === 'ADMIN' ? 'danger' : 'primary'}
+        onClose={() => setChanging(null)}
+        onConfirm={async () => {
+          if (changing) await changeRole(changing)
+        }}
+      >
+        {changing?.role === 'ADMIN' ? (
+          <p>They lose access to the admin console straight away and become a regular user.</p>
+        ) : (
+          <>
+            <p>They can approve bakeries, suspend them and change who is an admin.</p>
+            {changing && changing._count.memberships > 0 && (
+              <p className="strong">
+                Admins can't work for a bakery, so they will be removed from the staff of {changing._count.memberships}{' '}
+                {changing._count.memberships === 1 ? 'bakery' : 'bakeries'}. If they are a bakery's only owner, give it another owner first.
+              </p>
+            )}
+          </>
+        )}
+      </ConfirmDialog>
     </>
   )
 }

@@ -21,14 +21,15 @@ function useDebounced<T>(value: T, ms: number) {
 }
 
 export function OrdersPage() {
-  const { bakery } = useBakery()
+  // newOrders changes when the background check finds new orders, which reloads the list.
+  const { bakery, newOrders } = useBakery()
   const [tab, setTab] = useState<Tab>('ALL')
   const [search, setSearch] = useState('')
   const q = useDebounced(search.trim(), 300)
 
   const status = tab === 'ALL' || tab === 'ATTENTION' ? undefined : tab
-  const orders = useAsync(() => listBakeryOrders(bakery.id, { status, q: q || undefined }), [bakery.id, status, q])
-  const summary = useAsync(() => getOrdersSummary(bakery.id), [bakery.id])
+  const orders = useAsync(() => listBakeryOrders(bakery.id, { status, q: q || undefined }), [bakery.id, status, q, newOrders])
+  const summary = useAsync(() => getOrdersSummary(bakery.id), [bakery.id, newOrders])
 
   const rows = useMemo(
     () => (tab === 'ATTENTION' ? (orders.data ?? []).filter((o) => needsAttention(o)) : (orders.data ?? [])),
@@ -104,7 +105,7 @@ function OrdersTable({ orders }: { orders: OrderSummary[] }) {
 
   return (
     <div className="table-wrap">
-      <table className="table" style={{ minWidth: 860 }}>
+      <table className="table table-stack-wide" style={{ minWidth: 860 }}>
         <thead>
           <tr>
             <th scope="col">Due</th>
@@ -123,7 +124,7 @@ function OrdersTable({ orders }: { orders: OrderSummary[] }) {
             const soon = hint === 'Today' || hint === 'Tomorrow' || hint.endsWith('late')
             return (
               <tr key={o.id} className={o.status === 'CANCELLED' ? 'row-muted' : undefined}>
-                <td className="nowrap">
+                <td data-label="Due" className="nowrap">
                   <Link to={`/orders/${o.id}`} className="strong" style={{ color: 'var(--ink)' }}>
                     {formatDay(o.dueDate, tz)}
                   </Link>
@@ -131,11 +132,11 @@ function OrdersTable({ orders }: { orders: OrderSummary[] }) {
                     {[formatTime(o.dueDate, tz), hint].filter(Boolean).join(' · ')}
                   </div>
                 </td>
-                <td>
+                <td data-label="Customer">
                   <div>{o.customer.name ?? 'Customer'}</div>
                   <div className="sub">{o.customer.phone ?? o.customer.email ?? ''}</div>
                 </td>
-                <td>
+                <td data-label="Order">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 600 }}>{orderTitle(o)}</span>
                     {o.designImageUrl && (
@@ -158,14 +159,14 @@ function OrdersTable({ orders }: { orders: OrderSummary[] }) {
                     BK{o.number} · {TYPE_LABELS[o.type]} · {o.fulfilment === 'PICKUP' ? 'Pickup' : `Delivery, ${o.deliveryArea ?? ''}`}
                   </div>
                 </td>
-                <td>
+                <td data-label="Status">
                   <StatusBadge status={o.status} />
                   <div className="sub order-next-action">{waitingFor(o) ?? (o.status === 'SUBMITTED' ? 'Review and quote' : o.status === 'READY' ? 'Arrange collection' : 'No action needed')}</div>
                 </td>
-                <td>
+                <td data-label="Payment">
                   <PaymentBadge status={o.paymentStatus} />
                 </td>
-                <td className="right nowrap">
+                <td data-label="Total" className="right nowrap">
                   {o.total != null ? (
                     formatMoney(o.total, o.currency)
                   ) : o.quotations[0] ? (
