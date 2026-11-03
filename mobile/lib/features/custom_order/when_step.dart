@@ -23,7 +23,9 @@ class _WhenStepState extends State<WhenStep> {
   CustomOrderDraft get d => widget.draft;
   late final _address = TextEditingController(text: d.deliveryAddress);
   late final _budget = TextEditingController(text: d.budget?.toString() ?? '');
-  late String _fulfilment = d.dueDate == null ? defaultFulfilment(d.bakery) : d.fulfilment;
+  late String _fulfilment = d.dueDate == null
+      ? defaultFulfilment(d.bakery)
+      : d.fulfilment;
   String? _error;
 
   @override
@@ -42,14 +44,23 @@ class _WhenStepState extends State<WhenStep> {
 
   void _continue() {
     _save();
-    final problem = d.dueDate == null ? 'Choose when you need it' : fulfilmentProblem(_fulfilment, d.deliveryArea, _address.text);
+    final problem = d.dueDate == null
+        ? 'Choose when you need it'
+        : fulfilmentProblem(_fulfilment, d.deliveryArea, _address.text);
     if (problem != null) {
       ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(problem)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(problem)));
       return setState(() => _error = problem);
     }
     setState(() => _error = null);
-    Navigator.of(context).push(MaterialPageRoute<void>(settings: const RouteSettings(name: 'custom/5'), builder: (_) => ReviewStep(draft: d)));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: 'custom/5'),
+        builder: (_) => ReviewStep(draft: d),
+      ),
+    );
   }
 
   @override
@@ -69,16 +80,34 @@ class _WhenStepState extends State<WhenStep> {
                 children: [
                   const FieldLabel('Needed by'),
                   OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(alignment: Alignment.centerLeft, side: const BorderSide(color: AppColors.lineStrong, width: 1.5)),
+                    style: OutlinedButton.styleFrom(
+                      alignment: Alignment.centerLeft,
+                      side: const BorderSide(
+                        color: AppColors.lineStrong,
+                        width: 1.5,
+                      ),
+                    ),
                     icon: const Icon(Icons.event_outlined),
-                    label: Text(d.dueDate == null ? 'Choose a day and time' : dateTimeLabel(d.dueDate!)),
+                    label: Text(
+                      d.dueDate == null
+                          ? 'Choose a day and time'
+                          : dateTimeLabel(d.dueDate!),
+                    ),
                     onPressed: () async {
-                      final picked = await pickDueDate(context, bakery: d.bakery, rule: CustomCakeRule(), initial: d.dueDate);
+                      final picked = await pickDueDate(
+                        context,
+                        bakery: d.bakery,
+                        rule: CustomCakeRule(),
+                        initial: d.dueDate,
+                      );
                       if (picked != null) setState(() => d.dueDate = picked);
                     },
                   ),
                   const SizedBox(height: 6),
-                  Text('Only days the bakery can still take a custom cake are offered.', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    'Only days the bakery can still take a custom cake are offered.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 22),
                   FulfilmentFields(
                     bakery: d.bakery,
@@ -93,20 +122,40 @@ class _WhenStepState extends State<WhenStep> {
                   TextField(
                     controller: _budget,
                     keyboardType: TextInputType.number,
-                    decoration: InputDecoration(prefixText: '${d.bakery.currency} ', hintText: '120000'),
+                    decoration: InputDecoration(
+                      prefixText: '${d.bakery.currency} ',
+                      hintText: '120000',
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  Text('Helps the bakery suggest options that fit.', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    'Helps the bakery suggest options that fit.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   if (_error != null) ...[
                     const SizedBox(height: 14),
-                    Semantics(liveRegion: true, child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600))),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ],
                 ],
               ),
             ),
           ],
         ),
-        bottomNavigationBar: BottomBar(child: FilledButton(onPressed: _continue, child: const Text('Review order'))),
+        bottomNavigationBar: BottomBar(
+          child: FilledButton(
+            onPressed: _continue,
+            child: const Text('Review order'),
+          ),
+        ),
       ),
     );
   }

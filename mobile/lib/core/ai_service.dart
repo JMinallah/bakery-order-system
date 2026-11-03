@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -42,8 +41,7 @@ Future<AiGeneratedCake> generateCakeVisual({
       'Flavour: ${flavour.trim()}',
     if (colours != null && colours.trim().isNotEmpty)
       'Colours: ${colours.trim()}',
-    if (theme != null && theme.trim().isNotEmpty)
-      'Theme: ${theme.trim()}',
+    if (theme != null && theme.trim().isNotEmpty) 'Theme: ${theme.trim()}',
   ];
 
   final fullPrompt = [
@@ -57,10 +55,7 @@ Future<AiGeneratedCake> generateCakeVisual({
     throw ApiException(400, 'Please describe the cake you want.');
   }
 
-  final baseUrl = ImageApiConfig.baseUrl.replaceFirst(
-    RegExp(r'/$'),
-    '',
-  );
+  final baseUrl = ImageApiConfig.baseUrl.replaceFirst(RegExp(r'/$'), '');
 
   http.Response response;
   try {
@@ -73,7 +68,10 @@ Future<AiGeneratedCake> generateCakeVisual({
         .timeout(const Duration(minutes: 2));
   } catch (e) {
     if (baseUrl.contains('10.0.2.2')) {
-      final fallbackUrl = '$baseUrl/generate-image'.replaceFirst('10.0.2.2', '127.0.0.1');
+      final fallbackUrl = '$baseUrl/generate-image'.replaceFirst(
+        '10.0.2.2',
+        '127.0.0.1',
+      );
       response = await http
           .post(
             Uri.parse(fallbackUrl),
@@ -86,8 +84,7 @@ Future<AiGeneratedCake> generateCakeVisual({
     }
   }
 
-  final contentType =
-      (response.headers['content-type'] ?? '').toLowerCase();
+  final contentType = (response.headers['content-type'] ?? '').toLowerCase();
 
   if (response.statusCode != 200 || !contentType.startsWith('image/')) {
     var message = 'Image generation failed (HTTP ${response.statusCode}).';

@@ -14,9 +14,9 @@ class AiCakeStudioStep extends StatefulWidget {
   final CustomOrderDraft draft;
 
   static Route<void> route(CustomOrderDraft draft) => MaterialPageRoute(
-        settings: const RouteSettings(name: 'custom/ai'),
-        builder: (_) => AiCakeStudioStep(draft: draft),
-      );
+    settings: const RouteSettings(name: 'custom/ai'),
+    builder: (_) => AiCakeStudioStep(draft: draft),
+  );
 
   @override
   State<AiCakeStudioStep> createState() => _AiCakeStudioStepState();
@@ -41,8 +41,20 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
     'Minimalist emerald green and white wedding cake with geometric gold trim and orchids',
   ];
 
-  static const _flavours = ['Vanilla Cream', 'Chocolate Fudge', 'Red Velvet', 'Lemon Berry', 'Salted Caramel'];
-  static const _colorThemes = ['Blush & Gold', 'Dark & Moody', 'Pastel Dream', 'White & Foliage', 'Vibrant Festive'];
+  static const _flavours = [
+    'Vanilla Cream',
+    'Chocolate Fudge',
+    'Red Velvet',
+    'Lemon Berry',
+    'Salted Caramel',
+  ];
+  static const _colorThemes = [
+    'Blush & Gold',
+    'Dark & Moody',
+    'Pastel Dream',
+    'White & Foliage',
+    'Vibrant Festive',
+  ];
 
   String? _selectedFlavour;
   String? _selectedColor;
@@ -50,10 +62,13 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
   @override
   void initState() {
     super.initState();
-    final initialPrompt = d.aiPrompt ??
+    final initialPrompt =
+        d.aiPrompt ??
         (d.notes.isNotEmpty
             ? d.notes
-            : (d.flavour.isNotEmpty ? '${d.occasion} cake with ${d.flavour} flavour and ${d.colours} colours' : ''));
+            : (d.flavour.isNotEmpty
+                  ? '${d.occasion} cake with ${d.flavour} flavour and ${d.colours} colours'
+                  : ''));
     _promptController = TextEditingController(text: initialPrompt);
     _generatedUrl = d.designImageUrl;
     if (_generatedUrl != null) {
@@ -70,7 +85,9 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
   Future<void> _generateCake() async {
     final prompt = _promptController.text.trim();
     if (prompt.isEmpty) {
-      setState(() => _errorMessage = 'Please enter a description for your dream cake');
+      setState(
+        () => _errorMessage = 'Please enter a description for your dream cake',
+      );
       return;
     }
 
@@ -118,7 +135,8 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
     } on NetworkException catch (e) {
       if (mounted) setState(() => _errorMessage = e.toString());
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = 'Could not generate cake image: $e');
+      if (mounted)
+        setState(() => _errorMessage = 'Could not generate cake image: $e');
     } finally {
       if (mounted) setState(() => _generating = false);
     }
@@ -149,7 +167,10 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Cake Studio', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: const Text(
+          'AI Cake Studio',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 32),
@@ -157,7 +178,8 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
           StepHeader(
             step: 2,
             title: 'Describe your dream cake',
-            subtitle: 'Our AI visualizer creates an artisanal preview to send directly to the baker.',
+            subtitle:
+                'Our AI visualizer creates an artisanal preview to send directly to the baker.',
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -173,9 +195,15 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                     children: [
                       for (final sample in _samplePrompts) ...[
                         ActionChip(
-                          avatar: const Icon(Icons.auto_awesome, size: 16, color: AppColors.accent),
+                          avatar: const Icon(
+                            Icons.auto_awesome,
+                            size: 16,
+                            color: AppColors.accent,
+                          ),
                           label: Text(
-                            sample.length > 36 ? '${sample.substring(0, 34)}…' : sample,
+                            sample.length > 36
+                                ? '${sample.substring(0, 34)}…'
+                                : sample,
                             style: const TextStyle(fontSize: 13),
                           ),
                           backgroundColor: AppColors.surface,
@@ -207,7 +235,8 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                         minLines: 3,
                         textCapitalization: TextCapitalization.sentences,
                         decoration: const InputDecoration(
-                          hintText: 'e.g. A 2-tier rustic wedding cake with blush pink frosting, fresh raspberries, rosemary sprigs and gold leaf accents',
+                          hintText:
+                              'e.g. A 2-tier rustic wedding cake with blush pink frosting, fresh raspberries, rosemary sprigs and gold leaf accents',
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.zero,
                         ),
@@ -222,7 +251,13 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                             },
                             child: const Padding(
                               padding: EdgeInsets.only(top: 4),
-                              child: Text('Clear', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                              child: Text(
+                                'Clear',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.muted,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -242,7 +277,9 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                       ChoiceChip(
                         label: Text(f, style: const TextStyle(fontSize: 12)),
                         selected: _selectedFlavour == f,
-                        onSelected: (selected) => setState(() => _selectedFlavour = selected ? f : null),
+                        onSelected: (selected) => setState(
+                          () => _selectedFlavour = selected ? f : null,
+                        ),
                       ),
                   ],
                 ),
@@ -255,7 +292,9 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                       ChoiceChip(
                         label: Text(c, style: const TextStyle(fontSize: 12)),
                         selected: _selectedColor == c,
-                        onSelected: (selected) => setState(() => _selectedColor = selected ? c : null),
+                        onSelected: (selected) => setState(
+                          () => _selectedColor = selected ? c : null,
+                        ),
                       ),
                   ],
                 ),
@@ -265,21 +304,31 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   onPressed: _generating ? null : _generateCake,
                   icon: _generating
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.2),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.2,
+                          ),
                         )
                       : const Icon(Icons.auto_awesome),
                   label: Text(
                     _generating
                         ? 'Visualizing your cake with AI…'
-                        : (_generatedUrl == null ? 'Generate Cake Design' : '✨ Regenerate / Try Variation'),
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        : (_generatedUrl == null
+                              ? 'Generate Cake Design'
+                              : '✨ Regenerate / Try Variation'),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
 
@@ -293,10 +342,20 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline, color: AppColors.danger, size: 20),
+                        const Icon(
+                          Icons.error_outline,
+                          color: AppColors.danger,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(_errorMessage!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              color: AppColors.danger,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -310,7 +369,10 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.accent.withAlpha(80), width: 1.5),
+                      border: Border.all(
+                        color: AppColors.accent.withAlpha(80),
+                        width: 1.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.ink.withAlpha(15),
@@ -323,37 +385,66 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(19),
+                          ),
                           child: AspectRatio(
                             aspectRatio: 1,
                             child: d.aiImageBytes != null
-                                ? Image.memory(d.aiImageBytes!, fit: BoxFit.cover)
-                                : (_generatedUrl != null && _generatedUrl!.startsWith('assets/')
-                                    ? Image.asset(_generatedUrl!, fit: BoxFit.cover)
-                                    : Image.network(
-                                        _generatedUrl!,
-                                        fit: BoxFit.cover,
-                                        loadingBuilder: (context, child, progress) {
-                                          if (progress == null) return child;
-                                          return Container(
-                                            color: AppColors.sand,
-                                            alignment: Alignment.center,
-                                            child: const CircularProgressIndicator(strokeWidth: 2),
-                                          );
-                                        },
-                                        errorBuilder: (context, error, stackTrace) => Container(
-                                          color: AppColors.sand,
-                                          alignment: Alignment.center,
-                                          child: const Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.cake_outlined, color: AppColors.muted, size: 36),
-                                              SizedBox(height: 8),
-                                              Text('Cake Design Concept Ready', style: TextStyle(color: AppColors.muted)),
-                                            ],
-                                          ),
-                                        ),
-                                      )),
+                                ? Image.memory(
+                                    d.aiImageBytes!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : (_generatedUrl != null &&
+                                          _generatedUrl!.startsWith('assets/')
+                                      ? Image.asset(
+                                          _generatedUrl!,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.network(
+                                          _generatedUrl!,
+                                          fit: BoxFit.cover,
+                                          loadingBuilder:
+                                              (context, child, progress) {
+                                                if (progress == null)
+                                                  return child;
+                                                return Container(
+                                                  color: AppColors.sand,
+                                                  alignment: Alignment.center,
+                                                  child:
+                                                      const CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                );
+                                              },
+                                          errorBuilder:
+                                              (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) => Container(
+                                                color: AppColors.sand,
+                                                alignment: Alignment.center,
+                                                child: const Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.cake_outlined,
+                                                      color: AppColors.muted,
+                                                      size: 36,
+                                                    ),
+                                                    SizedBox(height: 8),
+                                                    Text(
+                                                      'Cake Design Concept Ready',
+                                                      style: TextStyle(
+                                                        color: AppColors.muted,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                        )),
                           ),
                         ),
                         Padding(
@@ -364,7 +455,10 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: AppColors.accentSoft,
                                       borderRadius: BorderRadius.circular(20),
@@ -372,7 +466,11 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                                     child: const Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.auto_awesome, size: 14, color: AppColors.accent),
+                                        Icon(
+                                          Icons.auto_awesome,
+                                          size: 14,
+                                          color: AppColors.accent,
+                                        ),
                                         SizedBox(width: 4),
                                         Text(
                                           'AI Custom Cake Concept',
@@ -388,19 +486,32 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
                                   const Spacer(),
                                   if (_isDemo)
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: AppColors.sand,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: const Text('Demo Visualizer', style: TextStyle(fontSize: 11, color: AppColors.ink2)),
+                                      child: const Text(
+                                        'Demo Visualizer',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.ink2,
+                                        ),
+                                      ),
                                     ),
                                 ],
                               ),
                               const SizedBox(height: 10),
                               Text(
                                 'This AI-generated reference photo and your description will be sent directly to ${d.bakery.name} so their pastry chefs can bake it accurately.',
-                                style: const TextStyle(fontSize: 13, color: AppColors.ink2, height: 1.4),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.ink2,
+                                  height: 1.4,
+                                ),
                               ),
                             ],
                           ),
@@ -417,7 +528,11 @@ class _AiCakeStudioStepState extends State<AiCakeStudioStep> {
       bottomNavigationBar: BottomBar(
         child: FilledButton(
           onPressed: _generating ? null : _proceed,
-          child: Text(_generatedUrl == null ? 'Skip to Cake Details' : 'Continue with this Cake Design'),
+          child: Text(
+            _generatedUrl == null
+                ? 'Skip to Cake Details'
+                : 'Continue with this Cake Design',
+          ),
         ),
       ),
     );

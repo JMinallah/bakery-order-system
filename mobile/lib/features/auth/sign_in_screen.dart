@@ -33,9 +33,9 @@ class _SignInScreenState extends State<SignInScreen> {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop(false);
     } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeShell()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
     }
   }
 
@@ -108,9 +108,9 @@ class _SignInScreenState extends State<SignInScreen> {
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop(true);
       } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeShell()),
-        );
+        Navigator.of(
+          context,
+        ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
       }
     } catch (e) {
       if (mounted) setState(() => _error = authMessage(e));

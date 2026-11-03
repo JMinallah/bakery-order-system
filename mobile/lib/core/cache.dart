@@ -23,12 +23,18 @@ Future<Cached<dynamic>> cachedGet(String path) async {
   final key = 'cache:$path';
   try {
     final data = await api.get(path);
-    await prefs.setString(key, jsonEncode({'at': DateTime.now().toIso8601String(), 'data': data}));
+    await prefs.setString(
+      key,
+      jsonEncode({'at': DateTime.now().toIso8601String(), 'data': data}),
+    );
     return Cached(data);
   } on NetworkException {
     final saved = prefs.getString(key);
     if (saved == null) rethrow;
     final decoded = jsonDecode(saved) as Map<String, dynamic>;
-    return Cached(decoded['data'], savedAt: DateTime.parse(decoded['at'] as String));
+    return Cached(
+      decoded['data'],
+      savedAt: DateTime.parse(decoded['at'] as String),
+    );
   }
 }

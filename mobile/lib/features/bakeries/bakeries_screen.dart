@@ -39,7 +39,8 @@ class _BakeriesScreenState extends State<BakeriesScreen> {
   Future<void> _chooseArea(List<Bakery> bakeries, String? current) async {
     if (!mounted) return;
 
-    final areas = {for (final b in bakeries) ...b.deliveryAreas}.toList()..sort();
+    final areas = {for (final b in bakeries) ...b.deliveryAreas}.toList()
+      ..sort();
 
     final area = await showModalBottomSheet<String>(
       context: context,
@@ -52,7 +53,10 @@ class _BakeriesScreenState extends State<BakeriesScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Select delivery area', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Select delivery area',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 if (current != null)
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(''),
@@ -109,12 +113,18 @@ class _BakeriesScreenState extends State<BakeriesScreen> {
           );
         }
         if (!snapshot.hasData) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         final (cached, area) = snapshot.data!;
-        final all = (cached.data as List).map((b) => Bakery.fromJson(b as Map<String, dynamic>)).toList();
-        final shown = area == null ? all : all.where((b) => b.deliversTo(area)).toList();
+        final all = (cached.data as List)
+            .map((b) => Bakery.fromJson(b as Map<String, dynamic>))
+            .toList();
+        final shown = area == null
+            ? all
+            : all.where((b) => b.deliversTo(area)).toList();
 
         return Scaffold(
           body: SafeArea(
@@ -173,7 +183,10 @@ class _BakeriesScreenState extends State<BakeriesScreen> {
                     borderRadius: BorderRadius.circular(18),
                     onTap: () => _chooseArea(all, area),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(18),
@@ -188,7 +201,11 @@ class _BakeriesScreenState extends State<BakeriesScreen> {
                               color: AppColors.accentSoft,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.location_on_rounded, color: AppColors.accent, size: 20),
+                            child: const Icon(
+                              Icons.location_on_rounded,
+                              color: AppColors.accent,
+                              size: 20,
+                            ),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
@@ -218,7 +235,10 @@ class _BakeriesScreenState extends State<BakeriesScreen> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 7,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.sand,
                               borderRadius: BorderRadius.circular(20),
@@ -242,9 +262,14 @@ class _BakeriesScreenState extends State<BakeriesScreen> {
                     const SizedBox(height: 14),
                     _AiStudioBanner(
                       onTap: () {
-                        final bakery = shown.isNotEmpty ? shown.first : all.first;
-                        final draft = CustomOrderDraft(bakery: bakery)..isAiDesigned = true;
-                        Navigator.of(context).push(AiCakeStudioStep.route(draft));
+                        final bakery = shown.isNotEmpty
+                            ? shown.first
+                            : all.first;
+                        final draft = CustomOrderDraft(bakery: bakery)
+                          ..isAiDesigned = true;
+                        Navigator.of(
+                          context,
+                        ).push(AiCakeStudioStep.route(draft));
                       },
                     ),
                   ],
@@ -265,7 +290,10 @@ class _BakeriesScreenState extends State<BakeriesScreen> {
                         area == null
                             ? '${all.length} ${all.length == 1 ? 'bakery' : 'bakeries'}'
                             : '${shown.length} serving $area',
-                        style: const TextStyle(fontSize: 14, color: AppColors.muted),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.muted,
+                        ),
                       ),
                     ],
                   ),
@@ -290,23 +318,34 @@ class _BakeriesScreenState extends State<BakeriesScreen> {
                         ),
                         child: Column(
                           children: [
-                            const Icon(Icons.storefront_outlined, size: 48, color: AppColors.muted),
+                            const Icon(
+                              Icons.storefront_outlined,
+                              size: 48,
+                              color: AppColors.muted,
+                            ),
                             const SizedBox(height: 12),
                             Text(
                               'No bakery delivers to $area yet',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 6),
                             const Text(
                               'Try picking a nearby neighbourhood or reset to see all available partner bakeries.',
-                              style: TextStyle(color: AppColors.muted, fontSize: 14),
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 14,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 16),
                             OutlinedButton(
                               onPressed: () async {
-                                final prefs = await SharedPreferences.getInstance();
+                                final prefs =
+                                    await SharedPreferences.getInstance();
                                 await prefs.remove(_areaKey);
                                 _setData(_load());
                               },
@@ -397,14 +436,21 @@ class _BakeryCard extends StatelessWidget {
                       // Delivery Area Tag
                       Row(
                         children: [
-                          const Icon(Icons.near_me_outlined, size: 13, color: AppColors.muted),
+                          const Icon(
+                            Icons.near_me_outlined,
+                            size: 13,
+                            color: AppColors.muted,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               bakery.deliveryAreas.isEmpty
                                   ? bakery.city
                                   : '${bakery.city} · ${bakery.deliveryAreas.take(3).join(', ')}',
-                              style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.muted,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -422,7 +468,10 @@ class _BakeryCard extends StatelessWidget {
                         children: [
                           if (next != null)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.okSoft,
                                 borderRadius: BorderRadius.circular(8),
@@ -440,22 +489,27 @@ class _BakeryCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                bakery.deliveryAreas.isNotEmpty && bakery.pickupAvailable
+                                bakery.deliveryAreas.isNotEmpty &&
+                                        bakery.pickupAvailable
                                     ? Icons.storefront_outlined
                                     : bakery.deliveryAreas.isNotEmpty
-                                        ? Icons.local_shipping_outlined
-                                        : Icons.shopping_bag_outlined,
+                                    ? Icons.local_shipping_outlined
+                                    : Icons.shopping_bag_outlined,
                                 size: 13,
                                 color: AppColors.muted,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                bakery.deliveryAreas.isNotEmpty && bakery.pickupAvailable
+                                bakery.deliveryAreas.isNotEmpty &&
+                                        bakery.pickupAvailable
                                     ? 'Delivery & Pickup'
                                     : bakery.deliveryAreas.isNotEmpty
-                                        ? 'Delivery only'
-                                        : 'Pickup only',
-                                style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                                    ? 'Delivery only'
+                                    : 'Pickup only',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.muted,
+                                ),
                               ),
                             ],
                           ),
@@ -528,7 +582,11 @@ class _AiStudioBanner extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.auto_awesome, color: Colors.white, size: 26),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 26,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -547,7 +605,10 @@ class _AiStudioBanner extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.25),
                               borderRadius: BorderRadius.circular(10),
@@ -567,7 +628,11 @@ class _AiStudioBanner extends StatelessWidget {
                       const SizedBox(height: 4),
                       const Text(
                         'Describe any dream cake & see an instant visual concept',
-                        style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.3),
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
                       ),
                     ],
                   ),
@@ -579,7 +644,11 @@ class _AiStudioBanner extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                  child: const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                 ),
               ],
             ),
@@ -589,4 +658,3 @@ class _AiStudioBanner extends StatelessWidget {
     );
   }
 }
-

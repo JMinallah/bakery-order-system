@@ -5,7 +5,8 @@ class AppConfig {
   /// On a real phone, use your computer's Wi-Fi IP address instead.
   static const apiUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'https://bakery-mak-sys.indiasouthcentral.cloudapp.azure.com/api',
+    defaultValue:
+        'https://bakery-mak-sys.indiasouthcentral.cloudapp.azure.com/api',
   );
 
   /// Local development only: identifies the user to the backend without
@@ -13,6 +14,7 @@ class AppConfig {
   /// once Firebase sign-in is wired up.
   static const devUser = String.fromEnvironment('DEV_USER', defaultValue: '');
 }
+
 /// Separate FastAPI server used for AI image generation.
 /// Android emulator: http://10.0.2.2:8000
 /// Fedora desktop:   http://127.0.0.1:8000

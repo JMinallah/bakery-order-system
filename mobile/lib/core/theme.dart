@@ -31,37 +31,17 @@ abstract final class AppColors {
 
 abstract final class AppShadows {
   static const card = [
-    BoxShadow(
-      color: Color(0x0A361F12),
-      blurRadius: 18,
-      offset: Offset(0, 5),
-    ),
-    BoxShadow(
-      color: Color(0x06361F12),
-      blurRadius: 4,
-      offset: Offset(0, 1),
-    ),
+    BoxShadow(color: Color(0x0A361F12), blurRadius: 18, offset: Offset(0, 5)),
+    BoxShadow(color: Color(0x06361F12), blurRadius: 4, offset: Offset(0, 1)),
   ];
 
   static const elevated = [
-    BoxShadow(
-      color: Color(0x12361F12),
-      blurRadius: 28,
-      offset: Offset(0, 10),
-    ),
-    BoxShadow(
-      color: Color(0x08361F12),
-      blurRadius: 8,
-      offset: Offset(0, 2),
-    ),
+    BoxShadow(color: Color(0x12361F12), blurRadius: 28, offset: Offset(0, 10)),
+    BoxShadow(color: Color(0x08361F12), blurRadius: 8, offset: Offset(0, 2)),
   ];
 
   static const button = [
-    BoxShadow(
-      color: Color(0x28A62B52),
-      blurRadius: 16,
-      offset: Offset(0, 5),
-    ),
+    BoxShadow(color: Color(0x28A62B52), blurRadius: 16, offset: Offset(0, 5)),
   ];
 }
 
@@ -169,10 +149,7 @@ final appTheme = ThemeData(
     style: TextButton.styleFrom(
       minimumSize: const Size(44, 44),
       foregroundColor: AppColors.accent,
-      textStyle: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
-      ),
+      textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
   ),

@@ -27,17 +27,21 @@ class NetworkException implements Exception {
   const NetworkException();
 
   @override
-  String toString() => "You're offline or the connection is too weak right now.";
+  String toString() =>
+      "You're offline or the connection is too weak right now.";
 }
 
 /// Every call to the backend goes through here. See docs/api.md for endpoints.
 class ApiClient {
-  ApiClient({http.Client? client, this.timeout = const Duration(seconds: 45)}) : _client = client ?? http.Client();
+  ApiClient({http.Client? client, this.timeout = const Duration(seconds: 45)})
+    : _client = client ?? http.Client();
 
   final http.Client _client;
   final Duration timeout;
 
-  Future<Map<String, String>> _headers([String contentType = 'application/json']) async {
+  Future<Map<String, String>> _headers([
+    String contentType = 'application/json',
+  ]) async {
     final headers = {'Content-Type': contentType};
     if (firebaseReady) {
       // getIdToken refreshes the token when it is close to expiring.
@@ -52,18 +56,28 @@ class ApiClient {
 
   Uri _uri(String path) => Uri.parse('${AppConfig.apiUrl}$path');
 
-  Future<dynamic> get(String path) => _send((h) => _client.get(_uri(path), headers: h));
+  Future<dynamic> get(String path) =>
+      _send((h) => _client.get(_uri(path), headers: h));
 
-  Future<dynamic> post(String path, [Object? body]) =>
-      _send((h) => _client.post(_uri(path), headers: h, body: jsonEncode(body ?? {})));
+  Future<dynamic> post(String path, [Object? body]) => _send(
+    (h) => _client.post(_uri(path), headers: h, body: jsonEncode(body ?? {})),
+  );
 
-  Future<dynamic> patch(String path, Object body) => _send((h) => _client.patch(_uri(path), headers: h, body: jsonEncode(body)));
+  Future<dynamic> patch(String path, Object body) => _send(
+    (h) => _client.patch(_uri(path), headers: h, body: jsonEncode(body)),
+  );
 
   /// Sends raw bytes, e.g. a photo for POST /uploads.
   Future<dynamic> postBytes(String path, Uint8List bytes, String contentType) =>
-      _send((h) => _client.post(_uri(path), headers: h, body: bytes), contentType: contentType);
+      _send(
+        (h) => _client.post(_uri(path), headers: h, body: bytes),
+        contentType: contentType,
+      );
 
-  Future<dynamic> _send(Future<http.Response> Function(Map<String, String> headers) request, {String contentType = 'application/json'}) async {
+  Future<dynamic> _send(
+    Future<http.Response> Function(Map<String, String> headers) request, {
+    String contentType = 'application/json',
+  }) async {
     final http.Response res;
     try {
       res = await request(await _headers(contentType)).timeout(timeout);
@@ -76,7 +90,11 @@ class ApiClient {
     }
     final body = res.body.isEmpty ? null : jsonDecode(res.body);
     if (res.statusCode >= 400) {
-      throw ApiException(res.statusCode, (body is Map ? body['error'] as String? : null) ?? 'Something went wrong');
+      throw ApiException(
+        res.statusCode,
+        (body is Map ? body['error'] as String? : null) ??
+            'Something went wrong',
+      );
     }
     return body;
   }

@@ -31,11 +31,20 @@ class OrderSentScreen extends StatelessWidget {
       iconBackground: AppColors.accent,
       iconColour: Colors.white,
       title: 'Order sent',
-      lead: custom ? '${order.bakeryName} has your design. They will look at it and send you a price.' : '${order.bakeryName} will confirm your order soon.',
-      extra: Text('Order number ${orderRef(order.number)}', style: const TextStyle(color: AppColors.muted)),
+      lead: custom
+          ? '${order.bakeryName} has your design. They will look at it and send you a price.'
+          : '${order.bakeryName} will confirm your order soon.',
+      extra: Text(
+        'Order number ${orderRef(order.number)}',
+        style: const TextStyle(color: AppColors.muted),
+      ),
       steps: steps,
       primary: FilledButton(
-        onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => OrderDetailScreen(orderId: order.id))),
+        onPressed: () => Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => OrderDetailScreen(orderId: order.id),
+          ),
+        ),
         child: const Text('Track my order'),
       ),
     );
@@ -55,7 +64,8 @@ class QueuedScreen extends StatelessWidget {
       iconBackground: AppColors.sand,
       iconColour: AppColors.ink,
       title: 'Saved on your phone',
-      lead: "You're offline right now. Your order is safe and will send by itself as soon as you're connected, even if you close the app.",
+      lead:
+          "You're offline right now. Your order is safe and will send by itself as soon as you're connected, even if you close the app.",
       extra: const Text(
         "It shows in My orders as \"Waiting to send\". It can't be sent twice, even if you tap Try again.",
         style: TextStyle(color: AppColors.muted, height: 1.45),
@@ -66,7 +76,13 @@ class QueuedScreen extends StatelessWidget {
           final sent = await Outbox.instance.flush();
           if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(sent > 0 ? 'Sent to ${item.bakeryName}.' : 'Still offline. We will keep trying.')),
+            SnackBar(
+              content: Text(
+                sent > 0
+                    ? 'Sent to ${item.bakeryName}.'
+                    : 'Still offline. We will keep trying.',
+              ),
+            ),
           );
           if (sent > 0) Navigator.of(context).pop();
         },
@@ -105,7 +121,12 @@ class _ResultScaffold extends StatelessWidget {
           builder: (context, constraints) => SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(28, 48, 28, 20),
             child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: (constraints.maxHeight - 68).clamp(0, double.infinity)),
+              constraints: BoxConstraints(
+                minHeight: (constraints.maxHeight - 68).clamp(
+                  0,
+                  double.infinity,
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -116,18 +137,40 @@ class _ResultScaffold extends StatelessWidget {
                       Container(
                         width: 72,
                         height: 72,
-                        decoration: BoxDecoration(color: iconBackground, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: iconBackground,
+                          shape: BoxShape.circle,
+                        ),
                         child: Icon(icon, color: iconColour, size: 36),
                       ),
                       const SizedBox(height: 20),
-                      Semantics(liveRegion: true, child: Text(title, style: Theme.of(context).textTheme.headlineMedium)),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          title,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                      ),
                       const SizedBox(height: 10),
-                      Text(lead, style: const TextStyle(fontSize: 17, height: 1.5, color: AppColors.ink2)),
+                      Text(
+                        lead,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          height: 1.5,
+                          color: AppColors.ink2,
+                        ),
+                      ),
                       const SizedBox(height: 10),
                       extra,
                       if (steps.isNotEmpty) ...[
                         const Divider(height: 40),
-                        const Text('What happens next', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        const Text(
+                          'What happens next',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const SizedBox(height: 14),
                         for (var i = 0; i < steps.length; i++)
                           Padding(
@@ -139,11 +182,27 @@ class _ResultScaffold extends StatelessWidget {
                                   width: 28,
                                   height: 28,
                                   alignment: Alignment.center,
-                                  decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFD9C7BB), width: 1.5)),
-                                  child: Text('${i + 1}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0xFFD9C7BB),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '${i + 1}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(width: 14),
-                                Expanded(child: Padding(padding: const EdgeInsets.only(top: 3), child: Text(steps[i]))),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Text(steps[i]),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -157,7 +216,14 @@ class _ResultScaffold extends StatelessWidget {
                       children: [
                         primary,
                         const SizedBox(height: 10),
-                        Center(child: TextButton(onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst), child: const Text('Back to the bakery'))),
+                        Center(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(
+                              context,
+                            ).popUntil((r) => r.isFirst),
+                            child: const Text('Back to the bakery'),
+                          ),
+                        ),
                       ],
                     ),
                   ),

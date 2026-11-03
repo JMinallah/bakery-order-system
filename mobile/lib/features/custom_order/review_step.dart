@@ -1,4 +1,3 @@
-
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -33,8 +32,8 @@ class _ReviewStepState extends State<ReviewStep> {
   String? _error;
 
   void _editStep(String name) => Navigator.of(
-        context,
-      ).popUntil((r) => r.settings.name == name || r.isFirst);
+    context,
+  ).popUntil((r) => r.settings.name == name || r.isFirst);
 
   Future<void> _send() async {
     if (!await ensureSignedIn(context)) return;
@@ -96,17 +95,16 @@ class _ReviewStepState extends State<ReviewStep> {
   Future<void> _uploadPreview() async {
     await WidgetsBinding.instance.endOfFrame;
 
-    final boundary = _previewKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
+    final boundary =
+        _previewKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
 
     if (boundary == null) return;
 
     final image = await boundary.toImage(pixelRatio: 2);
 
     try {
-      final data = await image.toByteData(
-        format: ui.ImageByteFormat.png,
-      );
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
 
       if (data == null) return;
 
@@ -115,10 +113,7 @@ class _ReviewStepState extends State<ReviewStep> {
         data.lengthInBytes,
       );
 
-      d.designImageUrl = await uploadPhoto(
-        bytes,
-        contentType: 'image/png',
-      );
+      d.designImageUrl = await uploadPhoto(bytes, contentType: 'image/png');
     } finally {
       image.dispose();
     }
@@ -130,8 +125,7 @@ class _ReviewStepState extends State<ReviewStep> {
     final estimate = d.estimate;
 
     final personal = [
-      if (d.inscription.trim().isNotEmpty)
-        '“${d.inscription.trim()}”',
+      if (d.inscription.trim().isNotEmpty) '“${d.inscription.trim()}”',
       if (d.theme.trim().isNotEmpty) '${d.theme.trim()} theme',
       if (d.notes.trim().isNotEmpty) d.notes.trim(),
     ];
@@ -170,19 +164,16 @@ class _ReviewStepState extends State<ReviewStep> {
                         ),
                         clipBehavior: Clip.antiAlias,
                         child: d.aiImageBytes != null
-                            ? Image.memory(
-                                d.aiImageBytes!,
-                                fit: BoxFit.cover,
-                              )
+                            ? Image.memory(d.aiImageBytes!, fit: BoxFit.cover)
                             : (d.designImageUrl!.startsWith('assets/')
-                                ? Image.asset(
-                                    d.designImageUrl!,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Image.network(
-                                    d.designImageUrl!,
-                                    fit: BoxFit.cover,
-                                  )),
+                                  ? Image.asset(
+                                      d.designImageUrl!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.network(
+                                      d.designImageUrl!,
+                                      fit: BoxFit.cover,
+                                    )),
                       )
                     else if (d.useBuilder && d.groups.isNotEmpty)
                       Container(
@@ -226,9 +217,7 @@ class _ReviewStepState extends State<ReviewStep> {
                             onPressed: () => _editStep(
                               d.isAiDesigned
                                   ? 'custom/ai'
-                                  : (d.useBuilder
-                                      ? 'custom/2'
-                                      : 'custom/3'),
+                                  : (d.useBuilder ? 'custom/2' : 'custom/3'),
                             ),
                             child: const Text('Edit design'),
                           ),
@@ -256,9 +245,7 @@ class _ReviewStepState extends State<ReviewStep> {
                   _sum('Your budget', money(d.budget!, currency)),
                 const SizedBox(height: 6),
                 Text(
-                  estimate != null &&
-                          d.budget != null &&
-                          estimate > d.budget!
+                  estimate != null && d.budget != null && estimate > d.budget!
                       ? 'The estimate is above your budget. The bakery can suggest changes when they send their quote.'
                       : 'The bakery looks at your design and sends you a quote in the app.',
                   style: Theme.of(context).textTheme.bodySmall,
@@ -285,9 +272,7 @@ class _ReviewStepState extends State<ReviewStep> {
         note: "You'll get a quote in the app. Nothing is charged now.",
         child: FilledButton(
           onPressed: _sending ? null : _send,
-          child: Text(
-            _sending ? 'Sending…' : 'Send to ${d.bakery.name}',
-          ),
+          child: Text(_sending ? 'Sending…' : 'Send to ${d.bakery.name}'),
         ),
       ),
     );
@@ -312,11 +297,7 @@ class _ReviewStepState extends State<ReviewStep> {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({
-    required this.label,
-    required this.value,
-    this.onEdit,
-  });
+  const _Row({required this.label, required this.value, this.onEdit});
 
   final String label;
   final String value;
@@ -338,10 +319,7 @@ class _Row extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.muted,
-                  ),
+                  style: const TextStyle(fontSize: 13, color: AppColors.muted),
                 ),
                 const SizedBox(height: 3),
                 Text(value, style: const TextStyle(fontSize: 15)),
@@ -351,10 +329,7 @@ class _Row extends StatelessWidget {
           if (onEdit != null)
             TextButton(
               onPressed: onEdit,
-              child: Semantics(
-                label: 'Edit $label',
-                child: const Text('Edit'),
-              ),
+              child: Semantics(label: 'Edit $label', child: const Text('Edit')),
             ),
         ],
       ),

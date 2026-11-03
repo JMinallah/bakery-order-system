@@ -42,7 +42,10 @@ void main() {
       'paymentStatus': 'UNPAID',
       'amountPaid': 0,
       'estimate': 165000,
-      'bakery': {'name': 'Sweet Crumbs Bakery', 'mobileMoneyNumber': '0772 000 000'},
+      'bakery': {
+        'name': 'Sweet Crumbs Bakery',
+        'mobileMoneyNumber': '0772 000 000',
+      },
       'items': [],
       'selections': [
         {'groupName': 'Shape', 'optionName': 'Round'},
@@ -52,7 +55,12 @@ void main() {
         {'id': 'q1', 'amount': 170000, 'createdAt': '2026-10-14T08:40:00.000Z'},
       ],
       'comments': [
-        {'id': 'c1', 'body': 'Gold writing?', 'fromBakery': false, 'createdAt': '2026-10-14T07:05:00.000Z'},
+        {
+          'id': 'c1',
+          'body': 'Gold writing?',
+          'fromBakery': false,
+          'createdAt': '2026-10-14T07:05:00.000Z',
+        },
       ],
     });
     expect(order.title, 'Birthday cake');
@@ -73,9 +81,18 @@ void main() {
       'paymentStatus': 'UNPAID',
       'amountPaid': 0,
       'total': 85000,
-      'bakery': {'id': 'b1', 'slug': 'sweet-crumbs', 'name': 'Sweet Crumbs Bakery'},
+      'bakery': {
+        'id': 'b1',
+        'slug': 'sweet-crumbs',
+        'name': 'Sweet Crumbs Bakery',
+      },
       'items': [
-        {'id': 'i1', 'quantity': 1, 'unitPrice': 85000, 'product': {'id': 'p1', 'name': 'Red velvet cake'}},
+        {
+          'id': 'i1',
+          'quantity': 1,
+          'unitPrice': 85000,
+          'product': {'id': 'p1', 'name': 'Red velvet cake'},
+        },
       ],
       'quotations': [],
     });
@@ -85,8 +102,22 @@ void main() {
 
   test('a builder draft becomes the API body', () {
     final groups = [
-      OptionGroup(id: 'g1', kind: 'SHAPE', name: 'Shape', multiple: false, required: true, options: [BuilderOption(id: 'round', name: 'Round', price: 0)]),
-      OptionGroup(id: 'g2', kind: 'SIZE', name: 'Size', multiple: false, required: true, options: [BuilderOption(id: '2kg', name: '2 kg', price: 110000)]),
+      OptionGroup(
+        id: 'g1',
+        kind: 'SHAPE',
+        name: 'Shape',
+        multiple: false,
+        required: true,
+        options: [BuilderOption(id: 'round', name: 'Round', price: 0)],
+      ),
+      OptionGroup(
+        id: 'g2',
+        kind: 'SIZE',
+        name: 'Size',
+        multiple: false,
+        required: true,
+        options: [BuilderOption(id: '2kg', name: '2 kg', price: 110000)],
+      ),
     ];
     final draft = CustomOrderDraft(bakery: Bakery.fromJson(bakeryJson))
       ..groups = groups
@@ -101,28 +132,46 @@ void main() {
     expect(body['optionIds'], ['round', '2kg']);
     expect(body['inscription'], 'Happy 5th Birthday Amara');
     expect(body['dueDate'], '2026-11-07T11:00:00.000Z');
-    expect(body.containsKey('flavour'), isFalse, reason: 'free text fields are only for described cakes');
-    expect(body.containsKey('theme'), isFalse, reason: 'empty answers are left out');
+    expect(
+      body.containsKey('flavour'),
+      isFalse,
+      reason: 'free text fields are only for described cakes',
+    );
+    expect(
+      body.containsKey('theme'),
+      isFalse,
+      reason: 'empty answers are left out',
+    );
     expect(draft.estimate, 110000);
   });
 
-  test('an AI custom cake draft preserves designImageUrl, aiPrompt, and description in toJson', () {
-    final draft = CustomOrderDraft(bakery: Bakery.fromJson(bakeryJson))
-      ..useBuilder = false
-      ..isAiDesigned = true
-      ..aiPrompt = 'Two-tier blush pink cake with gold leaf and fresh raspberries'
-      ..designImageUrl = 'http://10.0.2.2:4000/api/uploads/sample-ai-id'
-      ..flavour = 'Vanilla Cream'
-      ..dueDate = DateTime.utc(2026, 11, 10, 14)
-      ..fulfilment = 'PICKUP';
+  test(
+    'an AI custom cake draft preserves designImageUrl, aiPrompt, and description in toJson',
+    () {
+      final draft = CustomOrderDraft(bakery: Bakery.fromJson(bakeryJson))
+        ..useBuilder = false
+        ..isAiDesigned = true
+        ..aiPrompt =
+            'Two-tier blush pink cake with gold leaf and fresh raspberries'
+        ..designImageUrl = 'http://10.0.2.2:4000/api/uploads/sample-ai-id'
+        ..flavour = 'Vanilla Cream'
+        ..dueDate = DateTime.utc(2026, 11, 10, 14)
+        ..fulfilment = 'PICKUP';
 
-    expect(draft.designSummary, 'AI Design: "Two-tier blush pink cake with gold leaf and fresh raspberries"');
-    final body = draft.toJson();
-    expect(body['type'], 'CUSTOM');
-    expect(body['designImageUrl'], 'http://10.0.2.2:4000/api/uploads/sample-ai-id');
-    expect(body['flavour'], 'Vanilla Cream');
-    expect(body['dueDate'], '2026-11-10T14:00:00.000Z');
-  });
+      expect(
+        draft.designSummary,
+        'AI Design: "Two-tier blush pink cake with gold leaf and fresh raspberries"',
+      );
+      final body = draft.toJson();
+      expect(body['type'], 'CUSTOM');
+      expect(
+        body['designImageUrl'],
+        'http://10.0.2.2:4000/api/uploads/sample-ai-id',
+      );
+      expect(body['flavour'], 'Vanilla Cream');
+      expect(body['dueDate'], '2026-11-10T14:00:00.000Z');
+    },
+  );
 
   test('Order parses designImageUrl and inspirationImageUrls', () {
     final order = Order.fromJson({
@@ -140,7 +189,12 @@ void main() {
       'quotations': [],
     });
 
-    expect(order.designImageUrl, 'http://10.0.2.2:4000/api/uploads/sample-ai-id');
-    expect(order.inspirationImageUrls, ['http://10.0.2.2:4000/api/uploads/inspire-1']);
+    expect(
+      order.designImageUrl,
+      'http://10.0.2.2:4000/api/uploads/sample-ai-id',
+    );
+    expect(order.inspirationImageUrls, [
+      'http://10.0.2.2:4000/api/uploads/inspire-1',
+    ]);
   });
 }

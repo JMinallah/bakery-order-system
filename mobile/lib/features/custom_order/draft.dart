@@ -59,7 +59,9 @@ class CustomOrderDraft {
       flavour.isNotEmpty ||
       (aiPrompt != null && aiPrompt!.isNotEmpty);
 
-  int? get estimate => useBuilder && groups.isNotEmpty ? rules.estimate(groups, selection) : null;
+  int? get estimate => useBuilder && groups.isNotEmpty
+      ? rules.estimate(groups, selection)
+      : null;
 
   String get title => '$occasion cake';
 
@@ -67,8 +69,13 @@ class CustomOrderDraft {
     if (isAiDesigned && aiPrompt != null && aiPrompt!.trim().isNotEmpty) {
       return 'AI Design: "${aiPrompt!.trim()}"';
     }
-    if (useBuilder && groups.isNotEmpty) return rules.describe(groups, selection);
-    final parts = [flavour, size, colours].where((p) => p.trim().isNotEmpty).join(', ');
+    if (useBuilder && groups.isNotEmpty)
+      return rules.describe(groups, selection);
+    final parts = [
+      flavour,
+      size,
+      colours,
+    ].where((p) => p.trim().isNotEmpty).join(', ');
     return parts.isEmpty ? 'Described in your own words' : parts;
   }
 
@@ -94,9 +101,12 @@ class CustomOrderDraft {
         'deliveryArea': deliveryArea,
         'deliveryAddress': text(deliveryAddress),
       },
-      if (photos.isNotEmpty) 'inspirationImageUrls': [for (final p in photos) p.url],
+      if (photos.isNotEmpty)
+        'inspirationImageUrls': [for (final p in photos) p.url],
       'designImageUrl': designImageUrl,
-      'optionIds': useBuilder ? [for (final o in rules.picked(groups, selection)) o.id] : <String>[],
+      'optionIds': useBuilder
+          ? [for (final o in rules.picked(groups, selection)) o.id]
+          : <String>[],
       'items': [
         if (basedOn != null) {'productId': basedOn!.id, 'quantity': 1},
       ],

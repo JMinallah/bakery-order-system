@@ -1,6 +1,13 @@
 /// A choice in the cake builder (GET /bakeries/:id/builder).
 class BuilderOption {
-  BuilderOption({required this.id, required this.name, required this.price, this.value, this.serves, this.imageUrl});
+  BuilderOption({
+    required this.id,
+    required this.name,
+    required this.price,
+    this.value,
+    this.serves,
+    this.imageUrl,
+  });
 
   final String id;
   final String name;
@@ -14,17 +21,24 @@ class BuilderOption {
   final String? imageUrl;
 
   factory BuilderOption.fromJson(Map<String, dynamic> json) => BuilderOption(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        price: json['price'] as int,
-        value: json['value'] as String?,
-        serves: json['serves'] as int?,
-        imageUrl: json['imageUrl'] as String?,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    price: json['price'] as int,
+    value: json['value'] as String?,
+    serves: json['serves'] as int?,
+    imageUrl: json['imageUrl'] as String?,
+  );
 }
 
 class OptionGroup {
-  OptionGroup({required this.id, required this.kind, required this.name, required this.multiple, required this.required, required this.options});
+  OptionGroup({
+    required this.id,
+    required this.kind,
+    required this.name,
+    required this.multiple,
+    required this.required,
+    required this.options,
+  });
 
   final String id;
 
@@ -36,11 +50,13 @@ class OptionGroup {
   final List<BuilderOption> options;
 
   factory OptionGroup.fromJson(Map<String, dynamic> json) => OptionGroup(
-        id: json['id'] as String,
-        kind: json['kind'] as String,
-        name: json['name'] as String,
-        multiple: json['multiple'] as bool,
-        required: json['required'] as bool,
-        options: (json['options'] as List).map((o) => BuilderOption.fromJson(o as Map<String, dynamic>)).toList(),
-      );
+    id: json['id'] as String,
+    kind: json['kind'] as String,
+    name: json['name'] as String,
+    multiple: json['multiple'] as bool,
+    required: json['required'] as bool,
+    options: (json['options'] as List)
+        .map((o) => BuilderOption.fromJson(o as Map<String, dynamic>))
+        .toList(),
+  );
 }

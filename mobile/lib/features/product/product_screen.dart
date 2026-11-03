@@ -28,7 +28,12 @@ class _ProductScreenState extends State<ProductScreen> {
     final facts = [
       if (p.sizeLabel != null) ('Size', p.sizeLabel!),
       if (p.serves != null) ('Serves', 'About ${p.serves}'),
-      ('Ready in', p.leadTimeDays == 0 ? 'Same day' : '${p.leadTimeDays} ${p.leadTimeDays == 1 ? 'day' : 'days'}'),
+      (
+        'Ready in',
+        p.leadTimeDays == 0
+            ? 'Same day'
+            : '${p.leadTimeDays} ${p.leadTimeDays == 1 ? 'day' : 'days'}',
+      ),
     ];
     return Scaffold(
       body: CustomScrollView(
@@ -51,15 +56,28 @@ class _ProductScreenState extends State<ProductScreen> {
               children: [
                 Text(p.name, style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 6),
-                Text(money(p.price, widget.bakery.currency), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                Text(
+                  money(p.price, widget.bakery.currency),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 if (p.description != null) ...[
                   const SizedBox(height: 12),
-                  Text(p.description!, style: const TextStyle(fontSize: 16, color: AppColors.ink2)),
+                  Text(
+                    p.description!,
+                    style: const TextStyle(fontSize: 16, color: AppColors.ink2),
+                  ),
                 ],
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: const BoxDecoration(border: Border.symmetric(horizontal: BorderSide(color: AppColors.line))),
+                  decoration: const BoxDecoration(
+                    border: Border.symmetric(
+                      horizontal: BorderSide(color: AppColors.line),
+                    ),
+                  ),
                   child: Row(
                     children: [
                       for (final (label, value) in facts)
@@ -67,8 +85,20 @@ class _ProductScreenState extends State<ProductScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(label, style: const TextStyle(fontSize: 13, color: AppColors.muted)),
-                              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                              Text(
+                                label,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                              Text(
+                                value,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -78,17 +108,41 @@ class _ProductScreenState extends State<ProductScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Expanded(child: Text('How many?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                    const Expanded(
+                      child: Text(
+                        'How many?',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                     IconButton.outlined(
-                      onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                      onPressed: _quantity > 1
+                          ? () => setState(() => _quantity--)
+                          : null,
                       icon: const Icon(Icons.remove),
                       tooltip: 'One less',
                     ),
                     SizedBox(
                       width: 44,
-                      child: Semantics(liveRegion: true, child: Text('$_quantity', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          '$_quantity',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ),
-                    IconButton.outlined(onPressed: () => setState(() => _quantity++), icon: const Icon(Icons.add), tooltip: 'One more'),
+                    IconButton.outlined(
+                      onPressed: () => setState(() => _quantity++),
+                      icon: const Icon(Icons.add),
+                      tooltip: 'One more',
+                    ),
                   ],
                 ),
               ],
@@ -97,7 +151,9 @@ class _ProductScreenState extends State<ProductScreen> {
         ],
       ),
       bottomNavigationBar: BottomBar(
-        note: p.customisable ? 'Customising lets you change the size, colour or decorations. The bakery then sends you a new price.' : null,
+        note: p.customisable
+            ? 'Customising lets you change the size, colour or decorations. The bakery then sends you a new price.'
+            : null,
         child: Column(
           children: [
             FilledButton(
@@ -105,10 +161,18 @@ class _ProductScreenState extends State<ProductScreen> {
                 if (!await ensureSignedIn(context)) return;
                 if (!context.mounted) return;
                 Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => QuickCheckoutScreen(product: p, bakery: widget.bakery, quantity: _quantity)),
+                  MaterialPageRoute<void>(
+                    builder: (_) => QuickCheckoutScreen(
+                      product: p,
+                      bakery: widget.bakery,
+                      quantity: _quantity,
+                    ),
+                  ),
                 );
               },
-              child: Text('Order this · ${money(p.price * _quantity, widget.bakery.currency)}'),
+              child: Text(
+                'Order this · ${money(p.price * _quantity, widget.bakery.currency)}',
+              ),
             ),
             if (p.customisable) ...[
               const SizedBox(height: 10),
@@ -116,7 +180,9 @@ class _ProductScreenState extends State<ProductScreen> {
                 onPressed: () async {
                   if (!await ensureSignedIn(context)) return;
                   if (!context.mounted) return;
-                  Navigator.of(context).push(OccasionStep.route(widget.bakery, basedOn: p));
+                  Navigator.of(
+                    context,
+                  ).push(OccasionStep.route(widget.bakery, basedOn: p));
                 },
                 child: const Text('Customise this cake'),
               ),

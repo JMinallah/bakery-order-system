@@ -35,15 +35,15 @@ class Product {
   final int? serves;
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        category: json['category'] as String,
-        price: json['price'] as int,
-        leadTimeDays: json['leadTimeDays'] as int,
-        customisable: json['customisable'] as bool,
-        description: json['description'] as String?,
-        imageUrl: json['imageUrl'] as String?,
-        sizeLabel: json['sizeLabel'] as String?,
-        serves: json['serves'] as int?,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    category: json['category'] as String,
+    price: json['price'] as int,
+    leadTimeDays: json['leadTimeDays'] as int,
+    customisable: json['customisable'] as bool,
+    description: json['description'] as String?,
+    imageUrl: json['imageUrl'] as String?,
+    sizeLabel: json['sizeLabel'] as String?,
+    serves: json['serves'] as int?,
+  );
 }

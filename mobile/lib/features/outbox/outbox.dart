@@ -10,7 +10,14 @@ import '../../models/order.dart';
 
 /// An order saved on the phone because it couldn't be sent yet.
 class OutboxItem {
-  OutboxItem({required this.clientRequestId, required this.body, required this.title, required this.bakeryName, required this.savedAt, this.error});
+  OutboxItem({
+    required this.clientRequestId,
+    required this.body,
+    required this.title,
+    required this.bakeryName,
+    required this.savedAt,
+    this.error,
+  });
 
   /// Sent with the order, so the backend never saves the same order twice.
   final String clientRequestId;
@@ -22,26 +29,32 @@ class OutboxItem {
   /// Set when the bakery refused it, e.g. the day filled up while the phone was offline.
   final String? error;
 
-  OutboxItem withError(String? message) =>
-      OutboxItem(clientRequestId: clientRequestId, body: body, title: title, bakeryName: bakeryName, savedAt: savedAt, error: message);
+  OutboxItem withError(String? message) => OutboxItem(
+    clientRequestId: clientRequestId,
+    body: body,
+    title: title,
+    bakeryName: bakeryName,
+    savedAt: savedAt,
+    error: message,
+  );
 
   Map<String, dynamic> toJson() => {
-        'clientRequestId': clientRequestId,
-        'body': body,
-        'title': title,
-        'bakeryName': bakeryName,
-        'savedAt': savedAt.toIso8601String(),
-        'error': error,
-      };
+    'clientRequestId': clientRequestId,
+    'body': body,
+    'title': title,
+    'bakeryName': bakeryName,
+    'savedAt': savedAt.toIso8601String(),
+    'error': error,
+  };
 
   factory OutboxItem.fromJson(Map<String, dynamic> json) => OutboxItem(
-        clientRequestId: json['clientRequestId'] as String,
-        body: (json['body'] as Map).cast<String, dynamic>(),
-        title: json['title'] as String,
-        bakeryName: json['bakeryName'] as String,
-        savedAt: DateTime.parse(json['savedAt'] as String),
-        error: json['error'] as String?,
-      );
+    clientRequestId: json['clientRequestId'] as String,
+    body: (json['body'] as Map).cast<String, dynamic>(),
+    title: json['title'] as String,
+    bakeryName: json['bakeryName'] as String,
+    savedAt: DateTime.parse(json['savedAt'] as String),
+    error: json['error'] as String?,
+  );
 }
 
 sealed class SubmitResult {}
@@ -90,7 +103,9 @@ class Outbox extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_key);
     if (saved != null) {
-      _items = (jsonDecode(saved) as List).map((e) => OutboxItem.fromJson(e as Map<String, dynamic>)).toList();
+      _items = (jsonDecode(saved) as List)
+          .map((e) => OutboxItem.fromJson(e as Map<String, dynamic>))
+          .toList();
       notifyListeners();
     }
     await flush();
@@ -108,14 +123,21 @@ class Outbox extends ChangeNotifier {
 
   Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(_items.map((i) => i.toJson()).toList()));
+    await prefs.setString(
+      _key,
+      jsonEncode(_items.map((i) => i.toJson()).toList()),
+    );
     notifyListeners();
     _scheduleRetry();
   }
 
   /// Sends the order now, or keeps it when there's no connection.
   /// The bakery refusing it (an [ApiException]) is thrown, so the form can show why.
-  Future<SubmitResult> submit(Map<String, dynamic> body, {required String title, required String bakeryName}) async {
+  Future<SubmitResult> submit(
+    Map<String, dynamic> body, {
+    required String title,
+    required String bakeryName,
+  }) async {
     final id = newRequestId();
     final item = OutboxItem(
       clientRequestId: id,
@@ -143,13 +165,22 @@ class Outbox extends ChangeNotifier {
       for (final item in waiting) {
         try {
           await api.post('/orders', item.body);
-          _items = _items.where((i) => i.clientRequestId != item.clientRequestId).toList();
+          _items = _items
+              .where((i) => i.clientRequestId != item.clientRequestId)
+              .toList();
           sent++;
           _retryDelay = _initialRetryDelay;
         } on ApiException catch (e) {
-          _items = [for (final i in _items) i.clientRequestId == item.clientRequestId ? i.withError(e.message) : i];
+          _items = [
+            for (final i in _items)
+              i.clientRequestId == item.clientRequestId
+                  ? i.withError(e.message)
+                  : i,
+          ];
         } on NetworkException {
-          final nextDelay = _retryDelay < _maxRetryDelay ? _retryDelay * 2 : _maxRetryDelay;
+          final nextDelay = _retryDelay < _maxRetryDelay
+              ? _retryDelay * 2
+              : _maxRetryDelay;
           _retryDelay = nextDelay;
           break;
         }

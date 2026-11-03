@@ -16,11 +16,18 @@ Future<void> submitOrder(
 }) async {
   if (!await ensureSignedIn(context)) return;
   if (!context.mounted) return;
-  final result = await Outbox.instance.submit(body, title: title, bakeryName: bakeryName);
+  final result = await Outbox.instance.submit(
+    body,
+    title: title,
+    bakeryName: bakeryName,
+  );
   if (!context.mounted) return;
   final screen = switch (result) {
     Sent(:final order) => OrderSentScreen(order: order, custom: custom),
     Queued(:final item) => QueuedScreen(item: item),
   };
-  Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => screen), (route) => route.isFirst);
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute<void>(builder: (_) => screen),
+    (route) => route.isFirst,
+  );
 }

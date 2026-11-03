@@ -9,7 +9,14 @@ import 'builder_step.dart';
 import 'draft.dart';
 import 'personal_step.dart';
 
-const defaultOccasions = ['Birthday', 'Wedding', 'Introduction', 'Graduation', 'Baby shower', 'Other'];
+const defaultOccasions = [
+  'Birthday',
+  'Wedding',
+  'Introduction',
+  'Graduation',
+  'Baby shower',
+  'Other',
+];
 
 enum _DesignMode { ai, builder, words }
 
@@ -19,9 +26,12 @@ class OccasionStep extends StatefulWidget {
 
   final CustomOrderDraft draft;
 
-  static Route<void> route(Bakery bakery, {Product? basedOn}) => MaterialPageRoute(
+  static Route<void> route(Bakery bakery, {Product? basedOn}) =>
+      MaterialPageRoute(
         settings: const RouteSettings(name: 'custom/1'),
-        builder: (_) => OccasionStep(draft: CustomOrderDraft(bakery: bakery, basedOn: basedOn)),
+        builder: (_) => OccasionStep(
+          draft: CustomOrderDraft(bakery: bakery, basedOn: basedOn),
+        ),
       );
 
   @override
@@ -34,7 +44,8 @@ class _OccasionStepState extends State<OccasionStep> {
       ? _DesignMode.ai
       : (widget.draft.useBuilder ? _DesignMode.builder : _DesignMode.words);
 
-  List<String> get _occasions => d.bakery.occasions.isNotEmpty ? d.bakery.occasions : defaultOccasions;
+  List<String> get _occasions =>
+      d.bakery.occasions.isNotEmpty ? d.bakery.occasions : defaultOccasions;
 
   Future<void> _confirmLeave() async {
     final leave = await showModalBottomSheet<bool>(
@@ -46,11 +57,20 @@ class _OccasionStepState extends State<OccasionStep> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Leave your design?', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Leave your design?',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 10),
-              const Text('Your choices are lost if you leave now.', style: TextStyle(color: AppColors.ink2)),
+              const Text(
+                'Your choices are lost if you leave now.',
+                style: TextStyle(color: AppColors.ink2),
+              ),
               const SizedBox(height: 20),
-              FilledButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Keep designing')),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Keep designing'),
+              ),
               const SizedBox(height: 4),
               TextButton(
                 style: TextButton.styleFrom(foregroundColor: AppColors.danger),
@@ -77,7 +97,12 @@ class _OccasionStepState extends State<OccasionStep> {
         body: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            StepHeader(step: 1, title: d.basedOn == null ? 'What are we celebrating?' : 'Customise ${d.basedOn!.name.toLowerCase()}'),
+            StepHeader(
+              step: 1,
+              title: d.basedOn == null
+                  ? 'What are we celebrating?'
+                  : 'Customise ${d.basedOn!.name.toLowerCase()}',
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Column(
@@ -88,7 +113,12 @@ class _OccasionStepState extends State<OccasionStep> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final o in _occasions) ChoiceChip(label: Text(o), selected: d.occasion == o, onSelected: (_) => setState(() => d.occasion = o)),
+                      for (final o in _occasions)
+                        ChoiceChip(
+                          label: Text(o),
+                          selected: d.occasion == o,
+                          onSelected: (_) => setState(() => d.occasion = o),
+                        ),
                     ],
                   ),
                   if (d.basedOn == null) ...[
@@ -97,7 +127,8 @@ class _OccasionStepState extends State<OccasionStep> {
                     _Choice(
                       icon: Icons.auto_awesome,
                       title: '✨ Design with AI Studio',
-                      body: 'Describe your dream cake in plain words, let AI visualize it, and send the concept to the baker.',
+                      body:
+                          'Describe your dream cake in plain words, let AI visualize it, and send the concept to the baker.',
                       selected: _mode == _DesignMode.ai,
                       onTap: () => setState(() {
                         _mode = _DesignMode.ai;
@@ -109,7 +140,8 @@ class _OccasionStepState extends State<OccasionStep> {
                     _Choice(
                       icon: Icons.layers_outlined,
                       title: 'Build it here',
-                      body: 'Pick the shape, tiers, colours and decorations, and watch your cake take shape.',
+                      body:
+                          'Pick the shape, tiers, colours and decorations, and watch your cake take shape.',
                       selected: _mode == _DesignMode.builder,
                       onTap: () => setState(() {
                         _mode = _DesignMode.builder;
@@ -121,7 +153,8 @@ class _OccasionStepState extends State<OccasionStep> {
                     _Choice(
                       icon: Icons.edit_note_outlined,
                       title: 'Describe it in your own words',
-                      body: 'Already have an idea or a picture? Tell the bakery what you want.',
+                      body:
+                          'Already have an idea or a picture? Tell the bakery what you want.',
                       selected: _mode == _DesignMode.words,
                       onTap: () => setState(() {
                         _mode = _DesignMode.words;
@@ -130,16 +163,26 @@ class _OccasionStepState extends State<OccasionStep> {
                       }),
                     ),
                     const SizedBox(height: 8),
-                    Text('You can switch at any time. Nothing is sent until the last step.', style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      'You can switch at any time. Nothing is sent until the last step.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                   const SizedBox(height: 24),
                   const FieldLabel('How many?'),
                   SegmentedButton<bool>(
                     showSelectedIcon: false,
-                    style: SegmentedButton.styleFrom(minimumSize: const Size.fromHeight(48), selectedBackgroundColor: AppColors.accentSoft, selectedForegroundColor: AppColors.accent),
+                    style: SegmentedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      selectedBackgroundColor: AppColors.accentSoft,
+                      selectedForegroundColor: AppColors.accent,
+                    ),
                     segments: const [
                       ButtonSegment(value: false, label: Text('One cake')),
-                      ButtonSegment(value: true, label: Text('Bulk, for an event')),
+                      ButtonSegment(
+                        value: true,
+                        label: Text('Bulk, for an event'),
+                      ),
                     ],
                     selected: {d.bulk},
                     onSelectionChanged: (s) => setState(() => d.bulk = s.first),
@@ -189,7 +232,13 @@ class _OccasionStepState extends State<OccasionStep> {
 }
 
 class _Choice extends StatelessWidget {
-  const _Choice({required this.icon, required this.title, required this.body, required this.selected, required this.onTap});
+  const _Choice({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.selected,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String title;
@@ -206,7 +255,10 @@ class _Choice extends StatelessWidget {
         color: AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: selected ? AppColors.accent : AppColors.lineStrong, width: selected ? 2 : 1.5),
+          side: BorderSide(
+            color: selected ? AppColors.accent : AppColors.lineStrong,
+            width: selected ? 2 : 1.5,
+          ),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -216,15 +268,28 @@ class _Choice extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: selected ? AppColors.accent : AppColors.muted, size: 26),
+                Icon(
+                  icon,
+                  color: selected ? AppColors.accent : AppColors.muted,
+                  size: 26,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 4),
-                      Text(body, style: const TextStyle(fontSize: 14, color: AppColors.muted)),
+                      Text(
+                        body,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.muted,
+                        ),
+                      ),
                     ],
                   ),
                 ),

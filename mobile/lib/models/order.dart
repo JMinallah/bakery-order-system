@@ -12,7 +12,13 @@ const statusLabels = {
 const customerCancellable = {'SUBMITTED', 'QUOTED', 'CONFIRMED'};
 
 class Quotation {
-  Quotation({required this.id, required this.amount, required this.createdAt, this.note, this.acceptedAt});
+  Quotation({
+    required this.id,
+    required this.amount,
+    required this.createdAt,
+    this.note,
+    this.acceptedAt,
+  });
 
   final String id;
   final int amount;
@@ -21,16 +27,23 @@ class Quotation {
   final DateTime? acceptedAt;
 
   factory Quotation.fromJson(Map<String, dynamic> json) => Quotation(
-        id: json['id'] as String,
-        amount: json['amount'] as int,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        note: json['note'] as String?,
-        acceptedAt: json['acceptedAt'] == null ? null : DateTime.parse(json['acceptedAt'] as String),
-      );
+    id: json['id'] as String,
+    amount: json['amount'] as int,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    note: json['note'] as String?,
+    acceptedAt: json['acceptedAt'] == null
+        ? null
+        : DateTime.parse(json['acceptedAt'] as String),
+  );
 }
 
 class OrderComment {
-  OrderComment({required this.id, required this.body, required this.fromBakery, required this.createdAt});
+  OrderComment({
+    required this.id,
+    required this.body,
+    required this.fromBakery,
+    required this.createdAt,
+  });
 
   final String id;
   final String body;
@@ -38,11 +51,11 @@ class OrderComment {
   final DateTime createdAt;
 
   factory OrderComment.fromJson(Map<String, dynamic> json) => OrderComment(
-        id: json['id'] as String,
-        body: json['body'] as String,
-        fromBakery: json['fromBakery'] as bool,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    body: json['body'] as String,
+    fromBakery: json['fromBakery'] as bool,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 }
 
 class Order {
@@ -126,7 +139,8 @@ class Order {
 
   factory Order.fromJson(Map<String, dynamic> json) {
     final bakery = json['bakery'] as Map<String, dynamic>? ?? const {};
-    List<Map<String, dynamic>> list(String key) => ((json[key] as List?) ?? const []).cast<Map<String, dynamic>>();
+    List<Map<String, dynamic>> list(String key) =>
+        ((json[key] as List?) ?? const []).cast<Map<String, dynamic>>();
     return Order(
       id: json['id'] as String,
       number: json['number'] as int,
@@ -140,9 +154,16 @@ class Order {
       bakeryName: bakery['name'] as String? ?? 'The bakery',
       bakeryPhone: bakery['phone'] as String?,
       mobileMoneyNumber: bakery['mobileMoneyNumber'] as String?,
-      itemNames: list('items').map((i) => (i['product'] as Map<String, dynamic>)['name'] as String).toList(),
+      itemNames: list('items')
+          .map((i) => (i['product'] as Map<String, dynamic>)['name'] as String)
+          .toList(),
       quotations: list('quotations').map(Quotation.fromJson).toList(),
-      selections: list('selections').map((s) => MapEntry(s['groupName'] as String, s['optionName'] as String)).toList(),
+      selections: list('selections')
+          .map(
+            (s) =>
+                MapEntry(s['groupName'] as String, s['optionName'] as String),
+          )
+          .toList(),
       comments: list('comments').map(OrderComment.fromJson).toList(),
       occasion: json['occasion'] as String?,
       inscription: json['inscription'] as String?,
@@ -157,7 +178,8 @@ class Order {
       cancelReason: json['cancelReason'] as String?,
       cancelledBy: json['cancelledBy'] as String?,
       designImageUrl: json['designImageUrl'] as String?,
-      inspirationImageUrls: ((json['inspirationImageUrls'] as List?) ?? const []).cast<String>(),
+      inspirationImageUrls:
+          ((json['inspirationImageUrls'] as List?) ?? const []).cast<String>(),
     );
   }
 }

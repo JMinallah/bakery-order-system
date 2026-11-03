@@ -294,7 +294,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (order.designImageUrl != null && order.designImageUrl!.startsWith('http')) ...[
+              if (order.designImageUrl != null &&
+                  order.designImageUrl!.startsWith('http')) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: AspectRatio(
@@ -318,7 +319,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               if (order.notes != null) _Detail('Notes', order.notes!),
               if (order.inspirationImageUrls.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                const Text('Inspiration photos', style: TextStyle(fontSize: 13, color: AppColors.muted)),
+                const Text(
+                  'Inspiration photos',
+                  style: TextStyle(fontSize: 13, color: AppColors.muted),
+                ),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 8,
@@ -327,7 +331,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     for (final url in order.inspirationImageUrls)
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(url, width: 64, height: 64, fit: BoxFit.cover),
+                        child: Image.network(
+                          url,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                   ],
                 ),

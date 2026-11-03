@@ -47,15 +47,11 @@ void main() {
       ),
     );
 
-    final draft = CustomOrderDraft(
-      bakery: Bakery.fromJson(bakeryJson),
-    );
+    final draft = CustomOrderDraft(bakery: Bakery.fromJson(bakeryJson));
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: appTheme.copyWith(
-          splashFactory: NoSplash.splashFactory,
-        ),
+        theme: appTheme.copyWith(splashFactory: NoSplash.splashFactory),
         home: BuilderStep(draft: draft),
       ),
     );

@@ -29,7 +29,8 @@ BuilderOption? _matching(OptionGroup group, Product product) {
   for (final option in group.options) {
     final optionName = option.name.toLowerCase();
     if (group.kind == 'FLAVOUR' && name.contains(optionName)) return option;
-    if (group.kind == 'SIZE' && product.sizeLabel?.toLowerCase() == optionName) return option;
+    if (group.kind == 'SIZE' && product.sizeLabel?.toLowerCase() == optionName)
+      return option;
   }
   return null;
 }
@@ -40,7 +41,9 @@ Selection toggle(Selection selection, OptionGroup group, BuilderOption option) {
   final current = selection[group.id] ?? {};
   final Set<String> next;
   if (group.multiple) {
-    next = current.contains(option.id) ? ({...current}..remove(option.id)) : {...current, option.id};
+    next = current.contains(option.id)
+        ? ({...current}..remove(option.id))
+        : {...current, option.id};
   } else {
     next = current.contains(option.id) && !group.required ? {} : {option.id};
   }
@@ -48,22 +51,27 @@ Selection toggle(Selection selection, OptionGroup group, BuilderOption option) {
 }
 
 List<BuilderOption> picked(List<OptionGroup> groups, Selection selection) => [
-      for (final g in groups)
-        for (final o in g.options)
-          if (selection[g.id]?.contains(o.id) ?? false) o,
-    ];
+  for (final g in groups)
+    for (final o in g.options)
+      if (selection[g.id]?.contains(o.id) ?? false) o,
+];
 
-int estimate(List<OptionGroup> groups, Selection selection) => picked(groups, selection).fold(0, (sum, o) => sum + o.price);
+int estimate(List<OptionGroup> groups, Selection selection) =>
+    picked(groups, selection).fold(0, (sum, o) => sum + o.price);
 
-List<String> missingRequired(List<OptionGroup> groups, Selection selection) =>
-    [for (final g in groups) if (g.required && (selection[g.id]?.isEmpty ?? true)) g.name];
+List<String> missingRequired(List<OptionGroup> groups, Selection selection) => [
+  for (final g in groups)
+    if (g.required && (selection[g.id]?.isEmpty ?? true)) g.name,
+];
 
 /// "Round, 2 tiers, 2 kg, vanilla, blush pink, with pearls and flowers"
 String describe(List<OptionGroup> groups, Selection selection) {
   final main = <String>[];
   final extras = <String>[];
   for (final g in groups) {
-    final names = g.options.where((o) => selection[g.id]?.contains(o.id) ?? false).map((o) => o.name);
+    final names = g.options
+        .where((o) => selection[g.id]?.contains(o.id) ?? false)
+        .map((o) => o.name);
     if (g.kind == 'DECORATION') {
       extras.addAll(names.map((n) => n.toLowerCase()));
     } else {
@@ -78,14 +86,24 @@ String describe(List<OptionGroup> groups, Selection selection) {
 
 /// What the preview needs to draw.
 class CakeLook {
-  const CakeLook({required this.round, required this.tiers, required this.colour, required this.decorations});
+  const CakeLook({
+    required this.round,
+    required this.tiers,
+    required this.colour,
+    required this.decorations,
+  });
 
   final bool round;
   final int tiers;
   final Color colour;
   final Set<String> decorations;
 
-  static const plain = CakeLook(round: true, tiers: 1, colour: Color(0xFFFBEFD9), decorations: {});
+  static const plain = CakeLook(
+    round: true,
+    tiers: 1,
+    colour: Color(0xFFFBEFD9),
+    decorations: {},
+  );
 }
 
 CakeLook lookFor(List<OptionGroup> groups, Selection selection) {
@@ -95,7 +113,9 @@ CakeLook lookFor(List<OptionGroup> groups, Selection selection) {
   var colour = plain.colour;
   final decorations = <String>{};
   for (final g in groups) {
-    for (final o in g.options.where((o) => selection[g.id]?.contains(o.id) ?? false)) {
+    for (final o in g.options.where(
+      (o) => selection[g.id]?.contains(o.id) ?? false,
+    )) {
       final value = o.value ?? '';
       switch (g.kind) {
         case 'SHAPE':
@@ -109,7 +129,12 @@ CakeLook lookFor(List<OptionGroup> groups, Selection selection) {
       }
     }
   }
-  return CakeLook(round: round, tiers: tiers, colour: colour, decorations: decorations);
+  return CakeLook(
+    round: round,
+    tiers: tiers,
+    colour: colour,
+    decorations: decorations,
+  );
 }
 
 Color? parseHex(String value) {

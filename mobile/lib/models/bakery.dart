@@ -19,7 +19,14 @@ class Bakery {
     this.cakesFrom,
     this.nextCustomDate,
     this.handoverTimes = const ['10:00', '14:00', '17:00'],
-    this.occasions = const ['Birthday', 'Wedding', 'Introduction', 'Graduation', 'Baby shower', 'Other'],
+    this.occasions = const [
+      'Birthday',
+      'Wedding',
+      'Introduction',
+      'Graduation',
+      'Baby shower',
+      'Other',
+    ],
     this.customNoticeDays = 3,
   });
 
@@ -52,7 +59,8 @@ class Bakery {
   /// Number of days notice required for custom bespoke cakes.
   final int customNoticeDays;
 
-  bool deliversTo(String area) => deliveryAreas.any((a) => a.toLowerCase() == area.toLowerCase());
+  bool deliversTo(String area) =>
+      deliveryAreas.any((a) => a.toLowerCase() == area.toLowerCase());
 
   /// Parses string time slots ("HH:MM") into (hour, minute) tuples for UI chips and pickers.
   List<(int, int)> get parsedHandoverTimes {
@@ -72,32 +80,48 @@ class Bakery {
   }
 
   factory Bakery.fromJson(Map<String, dynamic> json) => Bakery(
-        id: json['id'] as String,
-        slug: json['slug'] as String,
-        name: json['name'] as String,
-        city: json['city'] as String,
-        currency: json['currency'] as String,
-        deliveryAreas: (json['deliveryAreas'] as List).cast<String>(),
-        deliveryFee: json['deliveryFee'] as int,
-        pickupAvailable: json['pickupAvailable'] as bool,
-        acceptsCash: json['acceptsCash'] as bool,
-        acceptsMobileMoney: json['acceptsMobileMoney'] as bool,
-        about: json['about'] as String?,
-        phone: json['phone'] as String?,
-        address: json['address'] as String?,
-        imageUrl: json['imageUrl'] as String?,
-        mobileMoneyNumber: json['mobileMoneyNumber'] as String?,
-        cakesFrom: json['cakesFrom'] as int?,
-        nextCustomDate: json['nextCustomDate'] as String?,
-        handoverTimes: (json['handoverTimes'] as List?)?.cast<String>() ?? const ['10:00', '14:00', '17:00'],
-        occasions: (json['occasions'] as List?)?.cast<String>() ?? const ['Birthday', 'Wedding', 'Introduction', 'Graduation', 'Baby shower', 'Other'],
-        customNoticeDays: json['customNoticeDays'] as int? ?? 3,
-      );
+    id: json['id'] as String,
+    slug: json['slug'] as String,
+    name: json['name'] as String,
+    city: json['city'] as String,
+    currency: json['currency'] as String,
+    deliveryAreas: (json['deliveryAreas'] as List).cast<String>(),
+    deliveryFee: json['deliveryFee'] as int,
+    pickupAvailable: json['pickupAvailable'] as bool,
+    acceptsCash: json['acceptsCash'] as bool,
+    acceptsMobileMoney: json['acceptsMobileMoney'] as bool,
+    about: json['about'] as String?,
+    phone: json['phone'] as String?,
+    address: json['address'] as String?,
+    imageUrl: json['imageUrl'] as String?,
+    mobileMoneyNumber: json['mobileMoneyNumber'] as String?,
+    cakesFrom: json['cakesFrom'] as int?,
+    nextCustomDate: json['nextCustomDate'] as String?,
+    handoverTimes:
+        (json['handoverTimes'] as List?)?.cast<String>() ??
+        const ['10:00', '14:00', '17:00'],
+    occasions:
+        (json['occasions'] as List?)?.cast<String>() ??
+        const [
+          'Birthday',
+          'Wedding',
+          'Introduction',
+          'Graduation',
+          'Baby shower',
+          'Other',
+        ],
+    customNoticeDays: json['customNoticeDays'] as int? ?? 3,
+  );
 }
 
 /// One day in GET /bakeries/:id/availability.
 class CalendarDay {
-  CalendarDay({required this.date, required this.status, required this.booked, required this.limit});
+  CalendarDay({
+    required this.date,
+    required this.status,
+    required this.booked,
+    required this.limit,
+  });
 
   /// "2026-11-07"
   final String date;
@@ -108,9 +132,9 @@ class CalendarDay {
   final int limit;
 
   factory CalendarDay.fromJson(Map<String, dynamic> json) => CalendarDay(
-        date: json['date'] as String,
-        status: json['status'] as String,
-        booked: json['booked'] as int,
-        limit: json['limit'] as int,
-      );
+    date: json['date'] as String,
+    status: json['status'] as String,
+    booked: json['booked'] as int,
+    limit: json['limit'] as int,
+  );
 }

@@ -273,10 +273,14 @@ class AppImage extends StatelessWidget {
 
   static String resolveAsset(String? name) {
     final lower = (name ?? '').toLowerCase();
-    if (lower.contains('choc') || lower.contains('fudge')) return 'assets/images/chocolate_fudge.jpg';
-    if (lower.contains('lemon') || lower.contains('drizzle')) return 'assets/images/lemon_drizzle.jpg';
-    if (lower.contains('red') || lower.contains('velvet')) return 'assets/images/red_velvet.jpg';
-    if (lower.contains('vanilla') || lower.contains('sponge')) return 'assets/images/vanilla_sponge.jpg';
+    if (lower.contains('choc') || lower.contains('fudge'))
+      return 'assets/images/chocolate_fudge.jpg';
+    if (lower.contains('lemon') || lower.contains('drizzle'))
+      return 'assets/images/lemon_drizzle.jpg';
+    if (lower.contains('red') || lower.contains('velvet'))
+      return 'assets/images/red_velvet.jpg';
+    if (lower.contains('vanilla') || lower.contains('sponge'))
+      return 'assets/images/vanilla_sponge.jpg';
     return 'assets/images/bakery_hero.jpg';
   }
 
@@ -291,12 +295,8 @@ class AppImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
-        errorBuilder: (_, _, _) => Image.asset(
-          assetPath,
-          width: width,
-          height: height,
-          fit: fit,
-        ),
+        errorBuilder: (_, _, _) =>
+            Image.asset(assetPath, width: width, height: height, fit: fit),
       );
     } else {
       imageWidget = Image.asset(
@@ -308,10 +308,7 @@ class AppImage extends StatelessWidget {
     }
 
     if (borderRadius != null) {
-      return ClipRRect(
-        borderRadius: borderRadius!,
-        child: imageWidget,
-      );
+      return ClipRRect(borderRadius: borderRadius!, child: imageWidget);
     }
     return imageWidget;
   }

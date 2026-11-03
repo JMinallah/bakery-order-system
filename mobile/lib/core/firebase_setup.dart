@@ -23,7 +23,8 @@ abstract final class FirebaseConfig {
     defaultValue: 'bakery-orders-prod',
   );
 
-  static bool get provided => apiKey.isNotEmpty && appId.isNotEmpty && projectId.isNotEmpty;
+  static bool get provided =>
+      apiKey.isNotEmpty && appId.isNotEmpty && projectId.isNotEmpty;
 }
 
 bool _ready = false;

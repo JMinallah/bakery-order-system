@@ -58,7 +58,9 @@ class _AccountScreenState extends State<AccountScreen> {
       final profile = Map<String, dynamic>.from(res);
       _name.text =
           profile['name'] as String? ??
-          (firebaseReady ? FirebaseAuth.instance.currentUser?.displayName : null) ??
+          (firebaseReady
+              ? FirebaseAuth.instance.currentUser?.displayName
+              : null) ??
           '';
       _phone.text = profile['phone'] as String? ?? '';
       return profile;
@@ -158,7 +160,9 @@ class _AccountScreenState extends State<AccountScreen> {
 
             final email =
                 profile['email'] as String? ??
-                (firebaseReady ? FirebaseAuth.instance.currentUser?.email : null) ??
+                (firebaseReady
+                    ? FirebaseAuth.instance.currentUser?.email
+                    : null) ??
                 '';
 
             return RefreshIndicator(
@@ -325,7 +329,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                           final next = await Push.instance
                                               .requestPermission();
                                           if (next == PushStatus.enabled) {
-                                              await Push.instance.register();
+                                            await Push.instance.register();
                                           }
                                           if (mounted) setState(() {});
                                         },
@@ -399,10 +403,7 @@ class _GuestAccountView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
       children: [
-        Text(
-          'Account',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
+        Text('Account', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 6),
         const Text(
           'Sign in to manage orders, custom bakes & preferences',
@@ -444,14 +445,16 @@ class _GuestAccountView extends StatelessWidget {
                       children: [
                         Text(
                           'Welcome to Crumb & Co.',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 2),
                         const Text(
                           'Your artisanal cake community',
-                          style: TextStyle(color: AppColors.muted, fontSize: 13),
+                          style: TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
